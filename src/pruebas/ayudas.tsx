@@ -3,6 +3,7 @@
  */
 
 import { act, render } from '@testing-library/react-native';
+import { useState } from 'react';
 import { AppState } from 'react-native';
 
 import {
@@ -10,9 +11,11 @@ import {
   instalarAlmacen,
   type AlmacenCuadrante,
 } from '../datos/almacenCuadrante';
-import type { Empleado } from '../dominio/tipos';
+import type { Empleado, IdEmpleado } from '../dominio/tipos';
 import { ANCHO_MINIMO_SOPORTADO } from '../ui/medidas';
 import { PantallaCuadrante } from '../ui/PantallaCuadrante';
+import { PantallaEmpleados } from '../ui/PantallaEmpleados';
+import { PantallaFichaEmpleado } from '../ui/PantallaFichaEmpleado';
 
 /** Miércoles 9 de septiembre de 2026, dentro de la semana 07/09/2026 - 13/09/2026. */
 export const MIERCOLES_A_LAS_DIEZ = new Date(2026, 8, 9, 10, 0);
@@ -73,6 +76,47 @@ export async function renderizarCuadrante(opciones: Opciones = {}): Promise<Cuad
       return encontrado;
     },
   };
+}
+
+/**
+ * El panel de empleados con su navegación: la lista, y la ficha del empleado cuya
+ * fila se toca. Es lo que hacen las rutas de expo-router, sin expo-router de por
+ * medio, para poder recorrer lista → ficha → lista dentro de un mismo test.
+ */
+export function PanelDeEmpleados() {
+  const [abierta, setAbierta] = useState<IdEmpleado | null>(null);
+
+  return abierta === null ? (
+    <PantallaEmpleados onAbrirFicha={setAbierta} />
+  ) : (
+    <PantallaFichaEmpleado idEmpleado={abierta} onVolver={() => setAbierta(null)} />
+  );
+}
+
+interface OpcionesDelPanel {
+  readonly plantilla?: readonly string[];
+  readonly prepararDatos?: (datos: AlmacenCuadrante) => void;
+}
+
+/** Renderiza el panel de empleados sobre un almacén recién creado. */
+export async function renderizarPanelDeEmpleados(
+  opciones: OpcionesDelPanel = {},
+): Promise<AlmacenCuadrante> {
+  const { plantilla = ['Ana', 'Bruno', 'Carmen'], prepararDatos } = opciones;
+
+  const datos = crearAlmacenEnMemoria(plantilla);
+  prepararDatos?.(datos);
+  instalarAlmacen(datos);
+
+  await render(<PanelDeEmpleados />);
+  return datos;
+}
+
+/** El empleado de la plantilla que se llama así. Falla si no está. */
+export function empleadoLlamado(datos: AlmacenCuadrante, nombre: string): Empleado {
+  const encontrado = datos.listarEmpleados().find((e) => e.nombre === nombre);
+  if (!encontrado) throw new Error(`No hay ningún empleado llamado ${nombre}`);
+  return encontrado;
 }
 
 /**

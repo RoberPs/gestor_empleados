@@ -14,11 +14,24 @@ import { colores, tipografia } from './tema';
 interface Props {
   readonly visible: boolean;
   readonly mensaje: string;
+  /**
+   * Texto del botón que confirma. Por defecto "Eliminar", que es lo que se hace con
+   * el contenido de una celda o con un rango de vacaciones. La baja de un empleado
+   * lo cambia por su propio nombre: la pregunta y el botón tienen que hablar del
+   * mismo acto para que no haya que releer el diálogo antes de tocarlo.
+   */
+  readonly textoConfirmar?: string;
   readonly onConfirmar: () => void;
   readonly onDesistir: () => void;
 }
 
-export function ConfirmacionEliminar({ visible, mensaje, onConfirmar, onDesistir }: Props) {
+export function ConfirmacionEliminar({
+  visible,
+  mensaje,
+  textoConfirmar = 'Eliminar',
+  onConfirmar,
+  onDesistir,
+}: Props) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDesistir}>
       <View style={estilos.velo}>
@@ -41,7 +54,9 @@ export function ConfirmacionEliminar({ visible, mensaje, onConfirmar, onDesistir
               onPress={onConfirmar}
               style={[estilos.boton, estilos.botonDestructivo]}
             >
-              <Text style={[estilos.textoBoton, estilos.textoBotonDestructivo]}>Eliminar</Text>
+              <Text style={[estilos.textoBoton, estilos.textoBotonDestructivo]}>
+                {textoConfirmar}
+              </Text>
             </Pressable>
           </View>
         </View>

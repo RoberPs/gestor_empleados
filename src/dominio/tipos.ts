@@ -12,13 +12,19 @@ export type IdEmpleado = string;
 export type IdTurno = string;
 
 /**
- * Empleado tal y como lo necesita el cuadrante: solo el nombre mostrable.
- * El cuadrante no conoce el teléfono ni el email; esos campos son del panel de
- * empleados y no se muestran nunca en esta pantalla.
+ * Empleado de la plantilla.
+ *
+ * El nombre es el único campo obligatorio: identifica la fila del cuadrante y se
+ * pide en el alta. El teléfono, el email y la nota son opcionales, se rellenan
+ * desde la ficha del panel de empleados y **no salen de ella**: el cuadrante no
+ * los lee ni los muestra en ninguna de sus pantallas.
  */
 export interface Empleado {
   readonly id: IdEmpleado;
   readonly nombre: string;
+  readonly telefono?: string;
+  readonly email?: string;
+  readonly nota?: string;
 }
 
 /** Un turno planificado de un día: hora de inicio y hora de fin, en 24h. */

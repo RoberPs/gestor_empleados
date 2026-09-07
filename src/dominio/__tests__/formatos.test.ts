@@ -1,4 +1,5 @@
 import {
+  analizarFecha,
   analizarHora,
   formatearFecha,
   formatearHora,
@@ -76,6 +77,42 @@ describe('Formatos de la pantalla', () => {
 
     // Los espacios sobrantes no estorban.
     expect(analizarHora(' 9 : 30 ')).toEqual({ horas: 9, minutos: 30 });
+  });
+
+  it('Teclear la fecha sin separadores', () => {
+    // `10092026` como fecha de inicio y `14/9/2026` como fecha de fin: las dos se
+    // normalizan al mismo día natural, y la ficha las muestra como dd/mm/aaaa.
+    expect(analizarFecha('10092026')).toBe('2026-09-10');
+    expect(analizarFecha('14/9/2026')).toBe('2026-09-14');
+    expect(formatearFecha(analizarFecha('10092026')!)).toBe('10/09/2026');
+    expect(formatearFecha(analizarFecha('14/9/2026')!)).toBe('14/09/2026');
+  });
+
+  it('admite las formas naturales de teclear una fecha con el teclado numérico', () => {
+    expect(analizarFecha('7/9/2026')).toBe('2026-09-07');
+    expect(analizarFecha('07/09/2026')).toBe('2026-09-07');
+    expect(analizarFecha('7-9-2026')).toBe('2026-09-07');
+    expect(analizarFecha('7.9.2026')).toBe('2026-09-07');
+    expect(analizarFecha('07092026')).toBe('2026-09-07');
+
+    // Los espacios sobrantes no estorban.
+    expect(analizarFecha(' 7 / 9 / 2026 ')).toBe('2026-09-07');
+  });
+
+  it('rechaza lo que no es una fecha real del calendario', () => {
+    expect(analizarFecha('31/02/2026')).toBeNull();
+    expect(analizarFecha('31022026')).toBeNull();
+    expect(analizarFecha('31/04/2026')).toBeNull();
+    expect(analizarFecha('29/02/2026')).toBeNull();
+    // 2028 sí es bisiesto.
+    expect(analizarFecha('29/02/2028')).toBe('2028-02-29');
+
+    expect(analizarFecha('00/09/2026')).toBeNull();
+    expect(analizarFecha('10/13/2026')).toBeNull();
+    expect(analizarFecha('10/09/26')).toBeNull();
+    expect(analizarFecha('7/9-2026')).toBeNull();
+    expect(analizarFecha('mañana')).toBeNull();
+    expect(analizarFecha('')).toBeNull();
   });
 
   it('rechaza lo que no es una hora válida del día', () => {

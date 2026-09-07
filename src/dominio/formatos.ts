@@ -52,6 +52,57 @@ export function formatearHora(hora: Hora): string {
   return `${hh}:${mm}`;
 }
 
+function componerFecha(dia: number, mes: number, anio: number): FechaISO | null {
+  if (!Number.isInteger(dia) || !Number.isInteger(mes) || !Number.isInteger(anio)) return null;
+  if (mes < 1 || mes > 12 || dia < 1) return null;
+
+  // El calendario tiene la última palabra: `31/02/2026` no existe, aunque el mes y
+  // el día estén dentro de sus rangos. Si `Date` tuvo que desbordar al mes
+  // siguiente, la fecha tecleada no era real.
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
+  if (
+    fecha.getUTCFullYear() !== anio ||
+    fecha.getUTCMonth() !== mes - 1 ||
+    fecha.getUTCDate() !== dia
+  ) {
+    return null;
+  }
+
+  return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+/**
+ * Lee una fecha escrita por el encargado y la normaliza a día natural.
+ *
+ * Misma decisión que con las horas del turno: la pantalla **muestra** siempre
+ * dd/mm/aaaa, pero al **escribir** se admiten las formas naturales de teclear una
+ * fecha con el teclado numérico del móvil, porque exigir una sola de ellas dejaría
+ * fuera al resto sin ninguna razón de negocio:
+ *
+ * - con separador: `7/9/2026`, `07/09/2026`, `7-9-2026`, `7.9.2026`
+ * - solo dígitos: `07092026`
+ *
+ * Devuelve `null` si el texto no es una fecha real del calendario.
+ */
+export function analizarFecha(texto: string): FechaISO | null {
+  const limpio = texto.trim().replace(/\s+/g, '');
+  if (limpio.length === 0) return null;
+
+  // El separador se captura y se exige repetido: `7/9-2026` no es forma de teclear
+  // una fecha, es un descuido.
+  const conSeparador = /^(\d{1,2})([/.-])(\d{1,2})\2(\d{4})$/.exec(limpio);
+  if (conSeparador) {
+    return componerFecha(Number(conSeparador[1]), Number(conSeparador[3]), Number(conSeparador[4]));
+  }
+
+  const soloDigitos = /^(\d{2})(\d{2})(\d{4})$/.exec(limpio);
+  if (soloDigitos) {
+    return componerFecha(Number(soloDigitos[1]), Number(soloDigitos[2]), Number(soloDigitos[3]));
+  }
+
+  return null;
+}
+
 function componerHora(horas: number, minutos: number): Hora | null {
   if (!Number.isInteger(horas) || !Number.isInteger(minutos)) return null;
   if (horas < 0 || horas > 23 || minutos < 0 || minutos > 59) return null;

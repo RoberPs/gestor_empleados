@@ -36,6 +36,20 @@ Las comprobaciones de anchura se hacen en orientación vertical sobre una pantal
 pantalla más ancha, hay que indicarlo en "Última comprobación", porque una pantalla
 más ancha no demuestra nada sobre el ancho mínimo.
 
+## Escenarios que necesitan un build instalable
+
+Casi todo se comprueba con el servidor de desarrollo (`npx expo start`) y la app
+abierta en Expo Go. Hay una excepción: los escenarios sobre **cómo arranca la app**
+no se pueden comprobar así, porque en Expo Go la app no tiene icono propio —se
+lanza desde dentro de Expo Go, con su pantalla de carga por delante— y lo que se
+observaría sería el arranque de Expo Go, no el del producto.
+
+Esos escenarios quedan pendientes hasta que exista un build instalable en el
+dispositivo. Hoy el proyecto no tiene ninguno configurado: no hay `android/`, ni
+`ios/`, ni `eas.json`. El icono sí está definido en `app.json`. Cuando se decida
+cómo se construye el binario, esos escenarios se comprueban sobre la app instalada
+y se anota aquí la fecha y el dispositivo.
+
 ## Escenarios
 
 Los escenarios que siguen tienen además un test automatizado que comprueba lo que
@@ -48,12 +62,19 @@ distinguen dos celdas de un vistazo.
 
 - **Capability**: cuadrante-semanal
 - **Requisito**: El cuadrante semanal es la pantalla de inicio
-- **Cómo se comprueba**: cerrar la app del todo y volver a abrirla desde el icono, un
+- **Cómo se comprueba**: **requiere un build instalable en el dispositivo** (ver
+  "Escenarios que necesitan un build instalable"). Con la app ya instalada: cerrarla
+  del todo desde el selector de aplicaciones y volver a abrirla desde su icono, un
   día laborable cualquiera, con empleados dados de alta.
 - **Qué se debe observar**: lo primero que aparece es la rejilla del cuadrante, con
   la semana que va del lunes anterior al domingo siguiente. No se ve ninguna pantalla
   de bienvenida, resumen o menú por el camino, ni siquiera un instante.
-- **Última comprobación**: pendiente.
+- **Última comprobación**: 07/09/2026, Expo Go sobre el servidor de desarrollo — **no
+  realizada**. En Expo Go la app no tiene icono propio y se relanza a través del
+  propio Expo Go, con la pantalla de carga de Expo por delante, así que el escenario
+  no se puede reproducir: ni hay icono desde el que abrir, ni se puede distinguir la
+  carga de Expo de una hipotética pantalla de bienvenida de la app. Queda pendiente
+  del primer build instalable.
 
 ### La semana completa se ve sin scroll horizontal
 
@@ -144,4 +165,33 @@ distinguen dos celdas de un vistazo.
 - **Qué se debe observar**: `AUS` y `VAC` se distinguen entre sí sin tener que leer
   con atención: además del fondo, el recuadro de una es continuo y el de la otra
   discontinuo. Comprobarlo también en escala de grises.
+- **Última comprobación**: pendiente.
+
+### Ver la lista con 20 empleados
+
+- **Capability**: panel-empleados
+- **Requisito**: La plantilla completa es alcanzable y legible en el panel
+- **Cómo se comprueba**: dar de alta a 20 empleados, abrir el panel de empleados en
+  un dispositivo de 360 puntos de ancho en orientación vertical (o en el emulador
+  con ese ancho) y recorrer la lista de arriba abajo tocando filas al azar.
+- **Qué se debe observar**: se llega a los 20 desplazándose verticalmente; cada fila
+  se toca sin esfuerzo con el pulgar y de un toque se abre la ficha de esa persona y
+  no la de la de al lado; la acción de dar de alta sigue a la vista sin tener que
+  recorrer la lista entera. El test automatizado ya comprueba que cada fila declara
+  44 puntos de alto y todo el ancho; lo que queda para el ojo es si de verdad se
+  acierta con el dedo y si la acción de alta sigue alcanzable en la mano.
+- **Última comprobación**: pendiente.
+
+### Ver la ficha de un empleado sin vacaciones y sin notas
+
+- **Capability**: panel-empleados
+- **Requisito**: La plantilla completa es alcanzable y legible en el panel
+- **Cómo se comprueba**: dar de alta a un empleado solo con su nombre y abrir su
+  ficha, sin añadirle ningún rango de vacaciones ni escribirle nota.
+- **Qué se debe observar**: el nombre, el teléfono y el email se muestran y se puede
+  escribir en los tres; la zona de vacaciones dice que no hay ninguno y ofrece la
+  acción de añadir un rango; el campo de nota se ve vacío y admite escritura. No
+  aparece ningún mensaje de error ni ninguna zona en blanco sin explicación. El test
+  automatizado comprueba que los cinco campos están presentes; lo que queda para el
+  ojo es que la ficha vacía se lea como una ficha vacía y no como una pantalla rota.
 - **Última comprobación**: pendiente.

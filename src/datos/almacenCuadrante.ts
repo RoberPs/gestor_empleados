@@ -1,5 +1,5 @@
 /**
- * Capa de acceso a datos del cuadrante.
+ * Capa de acceso a datos del cuadrante y del panel de empleados.
  *
  * ── IMPLEMENTACIÓN PROVISIONAL ──────────────────────────────────────────────
  * Todo lo que hay debajo de la interfaz `AlmacenCuadrante` guarda los datos en
@@ -8,15 +8,16 @@
  *
  * El change de persistencia sustituye la implementación **sin cambiar esta
  * interfaz**: basta con proporcionar otro objeto que cumpla `AlmacenCuadrante` y
- * pasarlo a `instalarAlmacen`. La pantalla del cuadrante no accede a los datos por
- * ninguna otra vía —no importa este fichero para leer estructuras internas, no
- * guarda estado propio de turnos ni de plantilla, y no conoce SQLite ni ningún
- * store—, así que ese cambio no toca ni un componente.
+ * pasarlo a `instalarAlmacen`. Ni el cuadrante ni el panel de empleados acceden a
+ * los datos por ninguna otra vía —no importan este fichero para leer estructuras
+ * internas, no guardan estado propio de turnos, de plantilla ni de ficha, y no
+ * conocen SQLite ni ningún store—, así que ese cambio no toca ni un componente.
  *
- * Lo mismo vale para el panel de empleados: el alta y el borrado viven aquí porque
- * la pantalla provisional de empleados los necesita, y el change del panel de
- * empleados los reemplazará por la ficha completa (nombre, teléfono, email). El
- * cuadrante solo consume `listarEmpleados`, que devuelve el nombre mostrable.
+ * La ficha completa del empleado vive ya aquí: nombre, teléfono, email, nota y las
+ * vacaciones por rango. El cuadrante solo consume de todo eso `listarEmpleados` y
+ * el contenido de las celdas; el teléfono, el email y la nota no salen de la ficha.
+ * Al change de persistencia se le traslada una restricción: la baja es un borrado
+ * real, no una marca de inactivo, y se lleva las celdas de cualquier semana.
  * ────────────────────────────────────────────────────────────────────────────
  */
 
@@ -31,8 +32,10 @@ import {
   type IdTurno,
   type TurnoPlanificado,
 } from '../dominio/tipos';
+import { sanearCampo, sePuedeGuardarElNombre } from '../dominio/empleado';
 import { ordenarEmpleadosPorNombre } from '../dominio/orden';
 import { ordenarPorHoraDeInicio } from '../dominio/turno';
+import { agruparEnRangos, diasDelRango, type RangoDeVacaciones } from '../dominio/vacaciones';
 
 /** Contenido de una semana entera: para cada empleado, sus siete días. */
 export type ContenidoDeLaSemana = ReadonlyMap<IdEmpleado, ReadonlyMap<FechaISO, ContenidoCelda>>;
@@ -44,8 +47,32 @@ export type ContenidoDeLaSemana = ReadonlyMap<IdEmpleado, ReadonlyMap<FechaISO, 
 export interface AlmacenCuadrante {
   /** Plantilla actual, en orden alfabético. Es la misma sea cual sea la semana. */
   listarEmpleados(): Empleado[];
-  altaEmpleado(nombre: string): Empleado;
+  /** La ficha de un empleado, o `null` si ya no está en la plantilla. */
+  leerEmpleado(id: IdEmpleado): Empleado | null;
+  /**
+   * Da de alta un empleado. El teléfono y el email son opcionales.
+   * Devuelve `null` sin tocar la plantilla si el nombre está vacío o repetido.
+   */
+  altaEmpleado(nombre: string, telefono?: string, email?: string): Empleado | null;
+  /** Cambia el nombre. Devuelve `false` sin guardar si queda vacío o repetido. */
+  editarNombre(id: IdEmpleado, nombre: string): boolean;
+  editarTelefono(id: IdEmpleado, telefono: string): void;
+  editarEmail(id: IdEmpleado, email: string): void;
+  editarNota(id: IdEmpleado, nota: string): void;
+  /** La baja se lleva al empleado y sus celdas de cualquier semana, también pasadas. */
   borrarEmpleado(id: IdEmpleado): void;
+
+  /** Los días de vacaciones del empleado, agrupados en tramos contiguos. */
+  leerRangosDeVacaciones(id: IdEmpleado): RangoDeVacaciones[];
+  /**
+   * Cuántos días del rango tienen ya turno planificado o ausencia. Los que ya
+   * estaban de vacaciones no cuentan: el rango no les cambia nada.
+   */
+  contarDiasConContenido(id: IdEmpleado, rango: RangoDeVacaciones): number;
+  /** Marca como vacaciones todos los días del rango, sustituyendo lo que hubiera. */
+  marcarRangoDeVacaciones(id: IdEmpleado, rango: RangoDeVacaciones): void;
+  /** Vacía los días de vacaciones del rango. Lo demás no se toca. */
+  eliminarRangoDeVacaciones(id: IdEmpleado, rango: RangoDeVacaciones): void;
 
   /** Contenido de las celdas de una semana concreta. */
   leerSemana(semana: Semana): ContenidoDeLaSemana;
@@ -113,16 +140,94 @@ export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []):
     });
   }
 
+  /**
+   * Cambia campos sueltos de una ficha. Un campo a `undefined` se quita: es como
+   * se vacían el teléfono, el email y la nota.
+   */
+  function cambiarFicha(id: IdEmpleado, cambios: Partial<Omit<Empleado, 'id'>>): void {
+    empleados = empleados.map((empleado) => {
+      if (empleado.id !== id) return empleado;
+      const cambiado: Record<string, unknown> = { ...empleado, ...cambios };
+      for (const campo of Object.keys(cambios)) {
+        if (cambiado[campo] === undefined) delete cambiado[campo];
+      }
+      return cambiado as unknown as Empleado;
+    });
+    avisar();
+  }
+
   const almacen: AlmacenCuadrante = {
     listarEmpleados() {
       return ordenarEmpleadosPorNombre(empleados);
     },
 
-    altaEmpleado(nombre) {
-      const empleado: Empleado = { id: nuevoId(), nombre: nombre.trim() };
+    leerEmpleado(id) {
+      return empleados.find((empleado) => empleado.id === id) ?? null;
+    },
+
+    altaEmpleado(nombre, telefono, email) {
+      if (!sePuedeGuardarElNombre(nombre, empleados)) return null;
+
+      // Teléfono y email son opcionales: si llegan vacíos, la ficha no guarda el
+      // campo en absoluto en lugar de guardar una cadena vacía.
+      const empleado: Empleado = {
+        id: nuevoId(),
+        nombre: sanearCampo(nombre),
+        ...(sanearCampo(telefono ?? '') ? { telefono: sanearCampo(telefono ?? '') } : {}),
+        ...(sanearCampo(email ?? '') ? { email: sanearCampo(email ?? '') } : {}),
+      };
       empleados = [...empleados, empleado];
       avisar();
       return empleado;
+    },
+
+    editarNombre(id, nombre) {
+      if (!sePuedeGuardarElNombre(nombre, empleados, id)) return false;
+      cambiarFicha(id, { nombre: sanearCampo(nombre) });
+      return true;
+    },
+
+    editarTelefono(id, telefono) {
+      cambiarFicha(id, { telefono: sanearCampo(telefono) || undefined });
+    },
+
+    editarEmail(id, email) {
+      cambiarFicha(id, { email: sanearCampo(email) || undefined });
+    },
+
+    editarNota(id, nota) {
+      // La nota se guarda entera: ni se recorta ni se le quitan los saltos de
+      // línea, solo los espacios de los extremos, igual que el resto de campos.
+      cambiarFicha(id, { nota: sanearCampo(nota) || undefined });
+    },
+
+    leerRangosDeVacaciones(id) {
+      const dias: FechaISO[] = [];
+      for (const [k, contenido] of celdas) {
+        if (contenido.tipo !== 'vacaciones') continue;
+        const [idDeLaCelda, dia] = k.split('|');
+        if (idDeLaCelda === id) dias.push(dia);
+      }
+      return agruparEnRangos(dias);
+    },
+
+    contarDiasConContenido(id, rango) {
+      return diasDelRango(rango).filter((dia) => {
+        const tipo = leerCelda(id, dia).tipo;
+        return tipo === 'turnos' || tipo === 'ausencia';
+      }).length;
+    },
+
+    marcarRangoDeVacaciones(id, rango) {
+      // Día a día, con la misma operación que la celda del cuadrante: el rango no
+      // es más que una forma de marcar varios días de una vez.
+      for (const dia of diasDelRango(rango)) almacen.marcarVacaciones(id, dia);
+    },
+
+    eliminarRangoDeVacaciones(id, rango) {
+      for (const dia of diasDelRango(rango)) {
+        if (leerCelda(id, dia).tipo === 'vacaciones') almacen.vaciarCelda(id, dia);
+      }
     },
 
     borrarEmpleado(id) {

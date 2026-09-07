@@ -3,11 +3,19 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { crearAlmacenEnMemoria, instalarAlmacen } from '../../datos/almacenCuadrante';
 import { ACCION_DAR_DE_ALTA, MENSAJE_SIN_EMPLEADOS } from '../EstadoVacio';
 import { PantallaCuadrante } from '../PantallaCuadrante';
-import { PantallaEmpleadosProvisional } from '../PantallaEmpleadosProvisional';
+import { PantallaEmpleados } from '../PantallaEmpleados';
 import { MIERCOLES_A_LAS_DIEZ, renderizarCuadrante } from '../../pruebas/ayudas';
 
 async function tocar(testID: string) {
   await fireEvent.press(screen.getByTestId(testID));
+}
+
+/** Da de alta un empleado desde el panel, como lo haría el encargado. */
+async function darDeAltaDesdeElPanel(nombre: string, accionDeApertura: string) {
+  await render(<PantallaEmpleados onAbrirFicha={() => {}} />);
+  await tocar(accionDeApertura);
+  await fireEvent.changeText(screen.getByTestId('campo-nombre-empleado'), nombre);
+  await tocar('accion-confirmar-alta');
 }
 
 describe('Estado vacío sin empleados dados de alta', () => {
@@ -45,9 +53,7 @@ describe('Estado vacío sin empleados dados de alta', () => {
     expect(screen.getByTestId('estado-vacio')).toBeTruthy();
 
     // …da de alta a su primer empleado desde el panel de empleados…
-    await render(<PantallaEmpleadosProvisional />);
-    await fireEvent.changeText(screen.getByTestId('campo-nombre-empleado'), 'Ana');
-    await tocar('accion-dar-de-alta');
+    await darDeAltaDesdeElPanel('Ana', 'accion-dar-de-alta-primer-empleado');
 
     // …y vuelve al cuadrante.
     await render(<PantallaCuadrante reloj={() => MIERCOLES_A_LAS_DIEZ} anchoDePantalla={360} />);
@@ -86,9 +92,7 @@ describe('Acceso al panel de empleados desde el cuadrante', () => {
     const { datos } = await renderizarCuadrante({ plantilla: ['Ana', 'Carmen'] });
 
     // El encargado da de alta a Bruno en el panel de empleados…
-    await render(<PantallaEmpleadosProvisional />);
-    await fireEvent.changeText(screen.getByTestId('campo-nombre-empleado'), 'Bruno');
-    await tocar('accion-dar-de-alta');
+    await darDeAltaDesdeElPanel('Bruno', 'accion-dar-de-alta');
 
     // …y vuelve al cuadrante.
     await render(<PantallaCuadrante reloj={() => MIERCOLES_A_LAS_DIEZ} anchoDePantalla={360} />);
