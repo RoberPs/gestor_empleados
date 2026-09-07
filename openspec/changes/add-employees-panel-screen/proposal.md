@@ -1,0 +1,70 @@
+## Why
+
+El cuadrante ya está especificado y ofrece un acceso permanente al panel de empleados, pero ese panel no existe todavía como comportamiento especificado: hoy es una pantalla provisional que solo da de alta y borra por nombre, creada dentro del change `add-weekly-roster-screen` para no bloquear la pantalla de entrada. Sin panel real no hay dónde guardar el teléfono ni el email de la plantilla —una de las tres cosas que cubre el producto— ni dónde llevar las vacaciones de una persona sin marcar catorce celdas una a una.
+
+## What Changes
+
+- Se especifica la pantalla de lista de empleados: qué muestra cada fila, en qué orden aparecen, cómo se abre la ficha de un empleado y qué se ve cuando la plantilla está vacía.
+- Se especifica la pantalla de ficha de un empleado: nombre, teléfono y email, todos editables por el encargado, y el regreso a la lista.
+- Se especifica el alta de un empleado: qué campos se piden, cuál es obligatorio, qué impide guardar y qué pasa al guardar.
+- Se especifica la gestión de vacaciones desde la ficha por rango de fechas: alta, edición y eliminación de rangos, y su efecto sobre las celdas `VAC` del cuadrante.
+- Se especifica la nota por empleado: campo de texto libre, editable, sin longitud fija impuesta por la interfaz.
+- Se especifica la baja de un empleado: qué se le pregunta al encargado y qué ocurre con los turnos planificados, las ausencias y las vacaciones ya planificados de esa persona.
+- Se especifica que teléfono, email y nota solo se ven y se editan en este panel: no aparecen en el cuadrante ni saldrán en las exportaciones.
+- Se especifica que la pantalla sigue siendo legible y manejable con 20 empleados en plantilla.
+
+Sustituye la pantalla provisional `src/ui/PantallaEmpleadosProvisional.tsx`. No rompe ningún comportamiento especificado: la spec viva de `cuadrante-semanal` no cambia (ver "Capabilities").
+
+## Capabilities
+
+### New Capabilities
+
+- `panel-empleados`: el panel de empleados — la lista de la plantilla, la ficha de cada empleado con sus datos de contacto, el alta, la edición y la baja, las vacaciones por rango de fechas y la nota libre por empleado.
+
+### Modified Capabilities
+
+Ninguna. `cuadrante-semanal` no necesita ningún cambio de requisito y su `spec.md` se queda como está:
+
+- El acceso al panel y el regreso al cuadrante ya están especificados allí ("Acceso al panel de empleados desde el cuadrante"), y este change se limita a sustituir la pantalla provisional que hay al otro lado de esa ruta.
+- Las vacaciones por rango no contradicen ningún requisito vivo: la spec del cuadrante describe qué muestra y qué ofrece una celda de vacaciones, no por qué vía se marcó. La decisión de 2026-09-07 sobre el marcado por rango (abajo) explica por qué eso basta.
+- El borrado de un empleado ya está especificado en "Rejilla de empleados por días": el borrado se lleva sus filas también en las semanas pasadas. Este change decide lo que le falta —qué se pregunta antes— sin tocar ese requisito.
+
+## Decisiones de negocio
+
+- **2026-09-07 — Nombre de la capability: `panel-empleados`.** Es el término que ya usan el `config.yaml` ("panel de administración", "panel de empleados") y la spec viva de `cuadrante-semanal` ("Acceso al panel de empleados desde el cuadrante"). La ficha individual no es capability aparte: dos ficheros de spec para una lista y su detalle multiplicarían la frontera a mantener sin ganar nada. **Confirmado por el responsable del proyecto.**
+- **2026-09-07 — La lista muestra únicamente el nombre de cada empleado.** Ni teléfono, ni email, ni nota, ni indicación de vacaciones. Motivo doble: privacidad —una lista de 20 filas con teléfonos queda expuesta a cualquiera que mire el móvil de reojo, y el dato solo se necesita cuando se busca a esa persona concreta— y legibilidad, porque una fila de una sola línea mantiene el área pulsable grande con 20 empleados en plantilla.
+- **2026-09-07 — El orden de la lista es el mismo que el de las filas del cuadrante: alfabético ascendente por nombre, según el orden alfabético del español.** Sin secciones, sin agrupaciones y sin orden manual. Motivo: el encargado busca en la lista lo que ya sabe buscar en la rejilla; dos órdenes distintos para la misma plantilla obligarían a aprender dos pantallas.
+- **2026-09-07 — Solo el nombre es obligatorio; teléfono y email son opcionales.** Se puede dar de alta un empleado con el nombre a secas y completar el contacto después, o nunca. Motivo: el alta ocurre de pie y con prisa, muchas veces con la persona delante; exigir el teléfono para poder ponerla en el cuadrante convertiría un dato de conveniencia en un bloqueo. El nombre sí es obligatorio porque es lo único que identifica la fila en la rejilla.
+- **2026-09-07 — El nombre debe ser único en la plantilla.** Si ya existe un empleado con ese nombre, el sistema no guarda y lo explica, conservando lo tecleado para que el encargado lo distinga ("María G."). Motivo: la rejilla del cuadrante identifica cada fila solo por el nombre y trunca los largos; dos "María" harían el cuadrante ambiguo justo en la pantalla donde se planifica. La comparación ignora mayúsculas y espacios sobrantes.
+- **2026-09-07 — Teléfono y email se guardan tal y como se teclean, sin validación de formato.** Motivo: `600 11 22 33`, `+34 600112233` y `600112233` son el mismo teléfono para una persona, y la app no llama ni envía correo a nadie —no hay ninguna función que consuma esos campos—, así que rechazar un formato solo impediría guardar un dato correcto. Se guardan sin los espacios sobrantes del principio y del final, y nada más.
+- **2026-09-07 — El alta se confirma con una acción explícita; la edición de una ficha existente se guarda sola.** El alta necesita acción explícita porque hasta entonces no hay empleado y el nombre puede faltar o estar repetido. En una ficha ya creada, cada campo queda guardado al terminar de editarlo: no hay botón "Guardar" ni diálogo de "¿descartar cambios?". Motivo: pocos toques por operación, y ningún camino en el que volver atrás pierda lo escrito. Se acepta conscientemente que una edición accidental quede guardada: no hay deshacer en este producto.
+- **2026-09-07 — Las vacaciones se gestionan por rango de fechas desde la ficha, y un rango es exactamente el conjunto de sus días marcados en el cuadrante.** No hay dos conceptos de vacaciones: añadir el rango `10/09/2026 - 14/09/2026` marca esos cinco días, que el cuadrante muestra como celdas `VAC`, y eliminar el rango los vacía. La ficha presenta las vacaciones agrupando los días marcados en rangos contiguos. Motivo: sustituye la decisión de 2026-09-07 del change `add-weekly-roster-screen` ("Ausencia y vacaciones se marcan día a día, no por rango"), que ya se anotó allí como coste aceptado hasta que se especificase el marcado por rango. Como el rango no es más que una forma de marcar varios días a la vez, la spec viva de `cuadrante-semanal` sigue siendo cierta palabra por palabra y no se modifica: quitar las vacaciones de un solo día desde la celda sigue funcionando y el rango de la ficha se parte en dos por sí solo.
+- **2026-09-07 — Dos rangos de vacaciones contiguos se ven en la ficha como uno solo.** Añadir `01/09/2026 - 03/09/2026` y después `04/09/2026 - 06/09/2026` deja en la ficha un único rango `01/09/2026 - 06/09/2026`. Motivo: consecuencia directa de la decisión anterior; son seis días seguidos de vacaciones y presentarlos partidos obligaría a guardar el rango como entidad propia solo para recordar en cuántas veces se tecleó.
+- **2026-09-07 — Un rango que pisa días con turno planificado o ausencia exige confirmación explícita, y al confirmar esos días pasan a vacaciones.** El sistema dice cuántos días del rango tienen ya turno planificado o ausencia antes de pedir la confirmación. Motivo: la celda tiene un único estado, así que el rango tiene que sustituir lo que hubiera; hacerlo en silencio borraría turnos ya planificados sin que el encargado se entere, y este producto ya exige confirmación explícita para eliminar el contenido de una celda. Los días del rango que ya estaban de vacaciones no se cuentan ni se tocan.
+- **2026-09-07 — Un rango cuya fecha de fin es anterior a la de inicio no se guarda; uno cuyo fin coincide con el inicio es un día de vacaciones.** El sistema explica por qué no puede guardarse sin perder lo tecleado, y la explicación desaparece al corregir la fecha. Motivo: mismo criterio que el turno planificado en el cuadrante — la validación mínima para no aceptar en silencio algo imposible, y ni una más.
+- **2026-09-07 — Las fechas se teclean, no se eligen en un calendario.** Se admiten las formas naturales de teclear una fecha con el teclado numérico (`7/9/2026`, `07/09/2026`, `7-9-2026`, `7.9.2026`, `07092026`) y el sistema las normaliza a dd/mm/aaaa, rechazando lo que no sea una fecha real del calendario. Motivo: es la misma decisión ya tomada para las horas del turno, y un selector de calendario exigiría una dependencia nueva (`@react-native-community/datetimepicker` o equivalente) para ganar más toques, no menos.
+- **2026-09-07 — La nota es un campo de texto libre por empleado, sin límite de longitud en la interfaz y sin estructura.** Ni etiquetas, ni categorías, ni fecha, ni varias notas por persona: una sola nota que se escribe y se corrige. Motivo: simplicidad; lo que el encargado apunta ("no puede los martes por la tarde", "talla M") no encaja en ningún campo que merezca inventarse.
+- **2026-09-07 — La baja de un empleado es un borrado definitivo y se lleva sus turnos planificados, sus ausencias y sus vacaciones, también los de semanas pasadas.** Antes de borrar, el sistema pide confirmación explícita nombrando a la persona y advirtiendo de que sus turnos planificados y vacaciones desaparecen del cuadrante, incluidas las semanas ya trabajadas. No hay deshacer. Motivo: es la única baja coherente con el requisito vivo "Rejilla de empleados por días" de `cuadrante-semanal`, que ya obliga a que un empleado borrado deje de tener fila también en las semanas pasadas, y con la decisión de que no existe el concepto de empleado inactivo ni histórico de plantilla. La advertencia es lo que impide que esa pérdida sea una sorpresa.
+- **2026-09-07 — La baja se hace desde la ficha, no desde la lista.** En la lista no hay ninguna acción de borrado, ni con deslizamiento ni con pulsación larga. Motivo: filas contiguas manejadas de pie y con una mano, y un borrado irreversible al otro lado; obligar a abrir la ficha primero convierte el toque erróneo en un viaje sin consecuencias.
+- **2026-09-07 — Teléfono, email y nota no salen de esta pantalla.** No se muestran en el cuadrante, no se incluirán en las exportaciones de cuadrante ni de horas, no se sincronizan y no se envían a terceros. Motivo: principio de privacidad por diseño del proyecto; se anota aquí como restricción explícita para el change de exportación.
+
+## Dependencias
+
+Comportamientos de dominio que este panel necesita o toca y que **no se especifican en este change**. Se anotan como specs pendientes; la delta de `panel-empleados` se limita a lo observable en la pantalla.
+
+- **Persistencia** (spec pendiente, fuera de alcance): esquema SQLite con expo-sqlite y store de Zustand. Este change describe qué ve y qué hace el encargado; dónde y cómo se guardan el empleado, sus vacaciones y su nota lo decide el `design.md` del change de persistencia. Le traslada una restricción: la baja es un borrado real, no una marca de inactivo.
+- **Ausencia y vacaciones como concepto de dominio** (spec pendiente). Este change especifica el alta, la edición y la eliminación de rangos de vacaciones desde la ficha y su efecto sobre las celdas del cuadrante. No especifica si hay tipos de vacaciones, si se computan días disponibles por año, ni el marcado por rango de las ausencias, que siguen marcándose día a día desde la celda.
+- **Turno planificado como concepto de dominio** (spec pendiente). Este change solo necesita saber si un día tiene turno planificado, para contarlo antes de pisarlo con un rango de vacaciones y para advertir en la baja. No especifica ninguna regla del turno.
+- **Registro de horas realmente trabajadas** (spec pendiente, fuera de alcance). La ficha no muestra horas registradas ni ningún resumen de jornada.
+- **Exportación a PDF/CSV** (spec pendiente, fuera de alcance). No se especifica ningún acceso a exportación desde este panel. Este change le traslada la restricción de que teléfono, email y nota no se exportan.
+- **Ajustes de la app** (spec pendiente, fuera de alcance): nombre comercial, nombre del local y nombre del responsable. El panel no da por hecho ningún nombre concreto.
+
+## Impact
+
+- **Código nuevo**: rutas de expo-router para la lista de empleados y para la ficha de un empleado, formulario de alta, campos editables de la ficha, lista de rangos de vacaciones con alta, edición y eliminación, campo de nota, confirmaciones de baja y de rango que pisa turnos, y estado vacío de la lista.
+- **Código sustituido**: `src/ui/PantallaEmpleadosProvisional.tsx` desaparece; la ruta `app/empleados.tsx` pasa a montar la lista real. El cuadrante no cambia: solo depende de que esa ruta exista y de que se pueda volver de ella.
+- **Capa de acceso a datos**: la interfaz `AlmacenCuadrante` de `src/datos/almacenCuadrante.ts` se amplía con los campos de la ficha, las vacaciones por rango y la nota. Sigue siendo provisional y en memoria hasta el change de persistencia.
+- **Dependencias**: ninguna nueva. Se implementa con el stack ya fijado (Expo SDK 57, expo-router, React Native, TypeScript). Por eso este change no crea `design.md`.
+- **Datos**: se añaden teléfono, email y nota por empleado. Son los primeros datos personales de contacto que guarda la app.
+- **Privacidad**: teléfono, email y nota solo se ven y se editan en este panel. No se muestran en el cuadrante, no se exportan, no se sincronizan y no se envían a terceros.
+- **Verificación**: los escenarios que solo se resuelven mirando la pantalla —la lista con 20 empleados y la ficha sin vacaciones ni notas— se anotan en `docs/verificacion-manual.md` citando su nombre literal.
