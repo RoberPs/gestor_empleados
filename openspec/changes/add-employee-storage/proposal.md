@@ -21,14 +21,16 @@ ausencias, las vacaciones y las horas registradas, que entran en changes posteri
   alfabéticamente por nombre según el orden alfabético del español.
 - Comportamiento definido ante la primera ejecución (base de datos inexistente, plantilla
   vacía) y ante la reapertura de la app (los datos siguen ahí).
-- Comportamiento definido cuando la base de datos no puede abrirse.
+- Comportamiento definido cuando la base de datos no puede abrirse, incluido un aviso que ocupa
+  la app entera, con acción de volver a intentarlo, en lugar del cuadrante.
 
 Fuera de este change, y no preparados de antemano: tablas de turnos planificados, ausencias,
 vacaciones y horas registradas; pantallas, componentes y navegación del panel de empleados;
 store de Zustand; exportación PDF/CSV; sincronización; copia de seguridad automática.
 
 No hay **BREAKING**: ningún comportamiento observable del panel de empleados ni del cuadrante
-cambia. Lo que hoy se pierde al cerrar la app pasa a conservarse.
+cambia mientras el almacenamiento se abra bien. Lo que hoy se pierde al cerrar la app pasa a
+conservarse.
 
 ## Capabilities
 
@@ -42,10 +44,15 @@ cambia. Lo que hoy se pierde al cerrar la app pasa a conservarse.
 
 ### Modified Capabilities
 
-Ninguna. `panel-empleados` y `cuadrante-semanal` describen comportamiento de pantalla que este
-change no toca: sus requisitos siguen siendo válidos palabra por palabra. Este change hace que
-sigan cumpliéndose después de cerrar y reabrir la app, que es algo que sus requisitos ya dan
-por supuesto.
+- `cuadrante-semanal`: el requisito «El cuadrante semanal es la pantalla de inicio» gana una
+  única excepción —el aviso de almacenamiento que no se puede abrir sustituye al cuadrante—,
+  porque hasta ahora no existía ningún fichero de datos y por tanto ninguna forma de que la
+  apertura fallara. Lo demás del requisito no cambia, y se añade el escenario que fija que la
+  plantilla vacía sigue llevando al cuadrante y no al aviso.
+
+`panel-empleados` no cambia: describe comportamiento de pantalla que este change no toca y sus
+requisitos siguen siendo válidos palabra por palabra. Este change hace que sigan cumpliéndose
+después de cerrar y reabrir la app, que es algo que sus requisitos ya dan por supuesto.
 
 ## Impact
 
@@ -54,7 +61,10 @@ por supuesto.
   `AlmacenCuadrante`**. Ni el panel de empleados ni el cuadrante se tocan: no importan
   estructuras internas de ese módulo ni conocen SQLite.
 - **Dependencias**: se añade `expo-sqlite`, que ya está fijado en el stack del proyecto. Ni
-  ORM, ni capa de abstracción, ni ninguna otra dependencia nueva.
+  ORM, ni capa de abstracción, ni ninguna otra dependencia nueva. Los tests van contra
+  `node:sqlite`, que viene dentro de Node y tampoco es una dependencia (ver `design.md` — D10).
+- **Arranque**: `app/_layout.tsx` pasa a abrir y migrar la base de datos antes de pintar nada, y
+  a decidir entre el `Stack` de siempre y el aviso de almacenamiento que no se puede abrir.
 - **Datos del dispositivo**: aparece un fichero de base de datos en el almacenamiento privado
   de la app. Antes de este change no existía ningún fichero de datos.
 - **Privacidad**: el teléfono, el email y la nota pasan a quedar escritos en disco. Siguen sin

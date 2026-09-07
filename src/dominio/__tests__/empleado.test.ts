@@ -1,4 +1,5 @@
 import {
+  formaComparable,
   MOTIVO_NOMBRE_REPETIDO,
   MOTIVO_NOMBRE_VACIO,
   motivoPorElQueElNombreNoSeGuarda,
@@ -32,6 +33,15 @@ describe('Reglas del empleado', () => {
   it('al editar, el nombre propio no cuenta como repetido', () => {
     expect(sePuedeGuardarElNombre('ana', PLANTILLA, '1')).toBe(true);
     expect(motivoPorElQueElNombreNoSeGuarda('Bruno', PLANTILLA, '1')).toBe(MOTIVO_NOMBRE_REPETIDO);
+  });
+
+  it('la forma comparable del nombre ignora mayúsculas y espacios sobrantes', () => {
+    // Es lo que se guarda en `empleados.nombre_comparable`, con un índice único
+    // encima: dos nombres con la misma forma comparable no caben en la plantilla.
+    expect(formaComparable(' ana ')).toBe(formaComparable('Ana'));
+    expect(formaComparable('ANA')).toBe(formaComparable('Ana'));
+    expect(formaComparable('Ana  G.')).toBe(formaComparable('ana g.'));
+    expect(formaComparable('Ana G.')).not.toBe(formaComparable('Ana'));
   });
 
   it('los datos de contacto se guardan tal y como se teclean, sin los espacios de los extremos', () => {

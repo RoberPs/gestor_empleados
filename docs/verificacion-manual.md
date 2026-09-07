@@ -5,6 +5,12 @@ mirando la pantalla**: legibilidad, tamaño del área pulsable, ausencia de scro
 horizontal, distinción visual entre estados de una celda y comportamiento del
 scroll. El resto de escenarios se comprueban en la suite automatizada (`npm test`).
 
+Hay una segunda razón, más estrecha, por la que algo puede acabar aquí: que la pieza
+que hay que ejercitar **no exista fuera del dispositivo**. Es el caso del adaptador
+de `expo-sqlite` (ver "El almacenamiento funciona de verdad en el dispositivo"), y
+solo de él: el SQL, las migraciones y las operaciones de empleados sí se comprueban
+en `npm test`, contra SQLite de verdad.
+
 ## Cómo se cita un escenario
 
 Cada anotación reproduce el **nombre literal del escenario** tal y como aparece en
@@ -37,6 +43,12 @@ pantalla más ancha, hay que indicarlo en "Última comprobación", porque una pa
 más ancha no demuestra nada sobre el ancho mínimo.
 
 ## Escenarios que necesitan un build instalable
+
+> **`npm run web` no sirve para mirar esta app.** Desde que la plantilla vive en
+> SQLite, en el navegador la app arranca directamente en el aviso «No se han podido
+> abrir tus datos», y es correcto: `expo-sqlite` no funciona ahí. El porqué está en
+> el `design.md` de `add-employee-storage` — Risks. Todo lo que hay debajo se
+> comprueba en el móvil, con `npx expo start` y Expo Go.
 
 Casi todo se comprueba con el servidor de desarrollo (`npx expo start`) y la app
 abierta en Expo Go. Hay una excepción: los escenarios sobre **cómo arranca la app**
@@ -180,6 +192,48 @@ distinguen dos celdas de un vistazo.
   recorrer la lista entera. El test automatizado ya comprueba que cada fila declara
   44 puntos de alto y todo el ancho; lo que queda para el ojo es si de verdad se
   acierta con el dedo y si la acción de alta sigue alcanzable en la mano.
+- **Última comprobación**: pendiente.
+
+### Los datos de contacto se quedan en el dispositivo
+
+- **Capability**: almacenamiento-empleados
+- **Requisito**: Los datos guardados no salen del dispositivo
+- **Cómo se comprueba**: con la app instalada y algún empleado dado de alta, poner el
+  móvil en modo avión, abrir la ficha de `Bruno` y rellenarle el teléfono, el email y
+  la nota. Cerrar la app por completo, volver a abrirla y mirar su ficha. Después,
+  con el móvil ya conectado, comprobar en Ajustes → Uso de datos que la app no ha
+  consumido nada.
+- **Qué se debe observar**: los tres datos se guardan sin conexión y siguen ahí al
+  reabrir; no aparece ningún error de red, ningún indicador de sincronización y
+  ningún consumo de datos atribuido a la app. El test automatizado
+  `src/datos/__tests__/privacidad.test.ts` ya comprueba la mitad que se puede leer en
+  el código —ningún módulo de `src/datos/` sabe hacer peticiones de red, compartir
+  ficheros ni escribir fuera del almacenamiento de la app—; lo que queda para el
+  dispositivo es que el sistema operativo confirme que, efectivamente, no sale nada.
+- **Última comprobación**: pendiente.
+
+### El almacenamiento funciona de verdad en el dispositivo
+
+- **Capability**: almacenamiento-empleados
+- **Requisito**: cubre la parte de «La plantilla sobrevive al cierre de la app» y
+  «Primera ejecución con la plantilla vacía» que los tests no alcanzan.
+- **Por qué no hay test**: `expo-sqlite` no se puede ejecutar fuera del dispositivo.
+  En Node, la propia librería instala una implementación vacía —`web/SQLiteModule.node.ts`:
+  «expo-sqlite is not supported on server runtime»— que abre, ejecuta y devuelve
+  vacío **sin lanzar ningún error**. La suite ejercita el mismo SQL contra
+  `node:sqlite` (ver `openspec/specs/.../design.md` — D10), así que lo único que queda
+  sin cubrir es `src/datos/sqlite/bdExpoSqlite.ts`: la envoltura de cuatro métodos
+  que traduce la interfaz a la API de la librería.
+- **Cómo se comprueba**: **requiere un build instalable en el dispositivo** (ver
+  "Escenarios que necesitan un build instalable"). Con la app recién instalada, sin
+  haberla abierto nunca: abrirla, dar de alta a `Ana`, `Bruno` y `Carmen`, rellenar
+  la ficha de `Bruno` entera, cerrar la app desde el selector de aplicaciones y
+  volver a abrirla.
+- **Qué se debe observar**: la primera apertura no pide ninguna confirmación sobre
+  los datos y la plantilla está vacía; tras reabrir, los tres siguen ahí, en el orden
+  `Ana`, `Bruno`, `Carmen`, y la ficha de `Bruno` conserva su teléfono, su email y su
+  nota. Si el adaptador estuviera mal, la plantilla aparecería vacía en la segunda
+  apertura.
 - **Última comprobación**: pendiente.
 
 ### Ver la ficha de un empleado sin vacaciones y sin notas

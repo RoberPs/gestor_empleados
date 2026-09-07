@@ -1,23 +1,29 @@
 /**
  * Capa de acceso a datos del cuadrante y del panel de empleados.
  *
- * ── IMPLEMENTACIÓN PROVISIONAL ──────────────────────────────────────────────
- * Todo lo que hay debajo de la interfaz `AlmacenCuadrante` guarda los datos en
- * memoria y se pierde al cerrar la app. Es deliberado: la persistencia (SQLite
- * local con expo-sqlite) es un change aparte, todavía sin especificar.
+ * ── QUÉ SOBREVIVE AL CIERRE DE LA APP Y QUÉ NO ──────────────────────────────
+ * Debajo de la interfaz `AlmacenCuadrante` conviven hoy dos cosas:
  *
- * El change de persistencia sustituye la implementación **sin cambiar esta
- * interfaz**: basta con proporcionar otro objeto que cumpla `AlmacenCuadrante` y
- * pasarlo a `instalarAlmacen`. Ni el cuadrante ni el panel de empleados acceden a
- * los datos por ninguna otra vía —no importan este fichero para leer estructuras
- * internas, no guardan estado propio de turnos, de plantilla ni de ficha, y no
- * conocen SQLite ni ningún store—, así que ese cambio no toca ni un componente.
+ * - **La plantilla y las fichas van contra SQLite** y se conservan en el
+ *   dispositivo: nombre, teléfono, email y nota siguen ahí al reabrir la app. Lo
+ *   implementa `sqlite/almacenEmpleadosSqlite.ts`; este fichero solo lo compone.
+ * - **Las celdas del cuadrante siguen en memoria y se pierden al cerrar la app**:
+ *   turnos planificados, ausencias y vacaciones. Su persistencia es el change de
+ *   turnos, todavía por hacer. Hasta entonces, reabrir la app deja la plantilla
+ *   intacta y el cuadrante vacío.
  *
- * La ficha completa del empleado vive ya aquí: nombre, teléfono, email, nota y las
- * vacaciones por rango. El cuadrante solo consume de todo eso `listarEmpleados` y
- * el contenido de las celdas; el teléfono, el email y la nota no salen de la ficha.
- * Al change de persistencia se le traslada una restricción: la baja es un borrado
- * real, no una marca de inactivo, y se lleva las celdas de cualquier semana.
+ * La interfaz no distingue entre las dos: ni el cuadrante ni el panel de empleados
+ * acceden a los datos por ninguna otra vía —no importan este fichero para leer
+ * estructuras internas, no guardan estado propio de turnos, de plantilla ni de
+ * ficha, y no conocen SQLite ni ningún store—, así que llevar las celdas a SQLite
+ * tampoco tocará ni un componente.
+ *
+ * `crearAlmacenEnMemoria` no se borra: es lo que los tests de pantalla inyectan con
+ * `instalarAlmacen` para partir de un estado conocido sin tocar ninguna base de
+ * datos.
+ *
+ * La baja de un empleado es un borrado real, no una marca de inactivo, y se lleva
+ * sus celdas de cualquier semana, también las pasadas.
  * ────────────────────────────────────────────────────────────────────────────
  */
 
@@ -36,6 +42,9 @@ import { sanearCampo, sePuedeGuardarElNombre } from '../dominio/empleado';
 import { ordenarEmpleadosPorNombre } from '../dominio/orden';
 import { ordenarPorHoraDeInicio } from '../dominio/turno';
 import { agruparEnRangos, diasDelRango, type RangoDeVacaciones } from '../dominio/vacaciones';
+import type { AlmacenEmpleados } from './almacenEmpleados';
+import type { BaseDeDatos } from './sqlite/bd';
+import { crearAlmacenEmpleadosSqlite } from './sqlite/almacenEmpleadosSqlite';
 
 /** Contenido de una semana entera: para cada empleado, sus siete días. */
 export type ContenidoDeLaSemana = ReadonlyMap<IdEmpleado, ReadonlyMap<FechaISO, ContenidoCelda>>;
@@ -95,14 +104,105 @@ function clave(idEmpleado: IdEmpleado, dia: FechaISO): string {
   return `${idEmpleado}|${dia}`;
 }
 
-/** Crea un almacén en memoria, opcionalmente con una plantilla inicial. */
-export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []): AlmacenCuadrante {
+/**
+ * La plantilla en memoria: se pierde al cerrar la app.
+ *
+ * La app **no** la usa —sus empleados van contra SQLite—, pero los tests de pantalla
+ * sí: les da una plantilla conocida sin tocar ninguna base de datos.
+ */
+export function crearAlmacenEmpleadosEnMemoria(): AlmacenEmpleados {
   let empleados: Empleado[] = [];
-  const celdas = new Map<string, ContenidoCelda>();
   const oyentes = new Set<() => void>();
   let siguienteId = 1;
 
-  const nuevoId = () => String(siguienteId++);
+  const avisar = () => oyentes.forEach((oyente) => oyente());
+
+  /**
+   * Cambia campos sueltos de una ficha. Un campo a `undefined` se quita: es como
+   * se vacían el teléfono, el email y la nota.
+   */
+  function cambiarFicha(id: IdEmpleado, cambios: Partial<Omit<Empleado, 'id'>>): void {
+    empleados = empleados.map((empleado) => {
+      if (empleado.id !== id) return empleado;
+      const cambiado: Record<string, unknown> = { ...empleado, ...cambios };
+      for (const campo of Object.keys(cambios)) {
+        if (cambiado[campo] === undefined) delete cambiado[campo];
+      }
+      return cambiado as unknown as Empleado;
+    });
+    avisar();
+  }
+
+  return {
+    listarEmpleados() {
+      return ordenarEmpleadosPorNombre(empleados);
+    },
+
+    leerEmpleado(id) {
+      return empleados.find((empleado) => empleado.id === id) ?? null;
+    },
+
+    altaEmpleado(nombre, telefono, email) {
+      if (!sePuedeGuardarElNombre(nombre, empleados)) return null;
+
+      // Teléfono y email son opcionales: si llegan vacíos, la ficha no guarda el
+      // campo en absoluto en lugar de guardar una cadena vacía.
+      const empleado: Empleado = {
+        id: String(siguienteId++),
+        nombre: sanearCampo(nombre),
+        ...(sanearCampo(telefono ?? '') ? { telefono: sanearCampo(telefono ?? '') } : {}),
+        ...(sanearCampo(email ?? '') ? { email: sanearCampo(email ?? '') } : {}),
+      };
+      empleados = [...empleados, empleado];
+      avisar();
+      return empleado;
+    },
+
+    editarNombre(id, nombre) {
+      if (!sePuedeGuardarElNombre(nombre, empleados, id)) return false;
+      cambiarFicha(id, { nombre: sanearCampo(nombre) });
+      return true;
+    },
+
+    editarTelefono(id, telefono) {
+      cambiarFicha(id, { telefono: sanearCampo(telefono) || undefined });
+    },
+
+    editarEmail(id, email) {
+      cambiarFicha(id, { email: sanearCampo(email) || undefined });
+    },
+
+    editarNota(id, nota) {
+      // La nota se guarda entera: ni se recorta ni se le quitan los saltos de
+      // línea, solo los espacios de los extremos, igual que el resto de campos.
+      cambiarFicha(id, { nota: sanearCampo(nota) || undefined });
+    },
+
+    borrarEmpleado(id) {
+      empleados = empleados.filter((empleado) => empleado.id !== id);
+      avisar();
+    },
+
+    suscribirse(oyente) {
+      oyentes.add(oyente);
+      return () => {
+        oyentes.delete(oyente);
+      };
+    },
+  };
+}
+
+/**
+ * Compone el almacén que consume la pantalla: la plantilla la atiende `empleados`
+ * —contra SQLite en la app, en memoria en los tests de pantalla— y las celdas del
+ * cuadrante viven en memoria hasta el change de turnos.
+ */
+export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadrante {
+  const celdas = new Map<string, ContenidoCelda>();
+  const oyentes = new Set<() => void>();
+  let siguienteIdDeTurno = 1;
+
+  const nuevoId = () => String(siguienteIdDeTurno++);
   const avisar = () => oyentes.forEach((oyente) => oyente());
 
   function leerCelda(idEmpleado: IdEmpleado, dia: FechaISO): ContenidoCelda {
@@ -140,66 +240,14 @@ export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []):
     });
   }
 
-  /**
-   * Cambia campos sueltos de una ficha. Un campo a `undefined` se quita: es como
-   * se vacían el teléfono, el email y la nota.
-   */
-  function cambiarFicha(id: IdEmpleado, cambios: Partial<Omit<Empleado, 'id'>>): void {
-    empleados = empleados.map((empleado) => {
-      if (empleado.id !== id) return empleado;
-      const cambiado: Record<string, unknown> = { ...empleado, ...cambios };
-      for (const campo of Object.keys(cambios)) {
-        if (cambiado[campo] === undefined) delete cambiado[campo];
-      }
-      return cambiado as unknown as Empleado;
-    });
-    avisar();
-  }
-
   const almacen: AlmacenCuadrante = {
-    listarEmpleados() {
-      return ordenarEmpleadosPorNombre(empleados);
-    },
-
-    leerEmpleado(id) {
-      return empleados.find((empleado) => empleado.id === id) ?? null;
-    },
-
-    altaEmpleado(nombre, telefono, email) {
-      if (!sePuedeGuardarElNombre(nombre, empleados)) return null;
-
-      // Teléfono y email son opcionales: si llegan vacíos, la ficha no guarda el
-      // campo en absoluto en lugar de guardar una cadena vacía.
-      const empleado: Empleado = {
-        id: nuevoId(),
-        nombre: sanearCampo(nombre),
-        ...(sanearCampo(telefono ?? '') ? { telefono: sanearCampo(telefono ?? '') } : {}),
-        ...(sanearCampo(email ?? '') ? { email: sanearCampo(email ?? '') } : {}),
-      };
-      empleados = [...empleados, empleado];
-      avisar();
-      return empleado;
-    },
-
-    editarNombre(id, nombre) {
-      if (!sePuedeGuardarElNombre(nombre, empleados, id)) return false;
-      cambiarFicha(id, { nombre: sanearCampo(nombre) });
-      return true;
-    },
-
-    editarTelefono(id, telefono) {
-      cambiarFicha(id, { telefono: sanearCampo(telefono) || undefined });
-    },
-
-    editarEmail(id, email) {
-      cambiarFicha(id, { email: sanearCampo(email) || undefined });
-    },
-
-    editarNota(id, nota) {
-      // La nota se guarda entera: ni se recorta ni se le quitan los saltos de
-      // línea, solo los espacios de los extremos, igual que el resto de campos.
-      cambiarFicha(id, { nota: sanearCampo(nota) || undefined });
-    },
+    listarEmpleados: (...argumentos) => empleados.listarEmpleados(...argumentos),
+    leerEmpleado: (...argumentos) => empleados.leerEmpleado(...argumentos),
+    altaEmpleado: (...argumentos) => empleados.altaEmpleado(...argumentos),
+    editarNombre: (...argumentos) => empleados.editarNombre(...argumentos),
+    editarTelefono: (...argumentos) => empleados.editarTelefono(...argumentos),
+    editarEmail: (...argumentos) => empleados.editarEmail(...argumentos),
+    editarNota: (...argumentos) => empleados.editarNota(...argumentos),
 
     leerRangosDeVacaciones(id) {
       const dias: FechaISO[] = [];
@@ -231,12 +279,13 @@ export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []):
     },
 
     borrarEmpleado(id) {
-      empleados = empleados.filter((empleado) => empleado.id !== id);
-      // Sus celdas se van con él: no hay histórico de plantilla.
+      // Sus celdas se van con él: no hay histórico de plantilla. Mientras vivan en
+      // memoria hay que recorrerlas a mano; cuando pasen a SQLite se irán solas por
+      // el `ON DELETE CASCADE` de su clave ajena.
       for (const k of [...celdas.keys()]) {
         if (k.startsWith(`${id}|`)) celdas.delete(k);
       }
-      avisar();
+      empleados.borrarEmpleado(id);
     },
 
     leerSemana(semana) {
@@ -286,15 +335,76 @@ export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []):
     },
 
     suscribirse(oyente) {
+      // Un solo punto de suscripción para la pantalla, aunque debajo haya dos
+      // almacenes: cambie la plantilla o cambie una celda, se vuelve a pintar.
       oyentes.add(oyente);
+      const darseDeBajaDeEmpleados = empleados.suscribirse(oyente);
       return () => {
         oyentes.delete(oyente);
+        darseDeBajaDeEmpleados();
       };
     },
   };
 
+  return almacen;
+}
+
+/** Un almacén entero en memoria, opcionalmente con una plantilla inicial. */
+export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []): AlmacenCuadrante {
+  const almacen = crearAlmacenCuadrante(crearAlmacenEmpleadosEnMemoria());
   for (const nombre of nombresIniciales) almacen.altaEmpleado(nombre);
   return almacen;
+}
+
+/**
+ * El almacén de la app: la plantilla en la base de datos ya abierta y migrada, las
+ * celdas del cuadrante todavía en memoria.
+ */
+export function crearAlmacenSobreSqlite(bd: BaseDeDatos): AlmacenCuadrante {
+  return crearAlmacenCuadrante(crearAlmacenEmpleadosSqlite(bd));
+}
+
+/**
+ * El almacén de cuando la base de datos no se ha podido abrir: rechaza toda lectura
+ * y toda escritura.
+ *
+ * No es la vía por la que el encargado se entera —para eso está el aviso que
+ * sustituye a toda la app—, sino una red de seguridad: si alguna pantalla llegara a
+ * pintarse por delante de ese aviso, conviene que se note en vez de que enseñe una
+ * plantilla vacía y acepte altas que no se guardan en ningún sitio (design.md — D8).
+ */
+export function crearAlmacenNoDisponible(): AlmacenCuadrante {
+  const rechazar = (): never => {
+    throw new Error('El almacenamiento no está abierto: no se atiende ninguna operación.');
+  };
+
+  // Una a una y no con un Proxy: así, el día que `AlmacenCuadrante` gane una
+  // operación, el compilador obliga a decidir qué hace aquí.
+  return {
+    listarEmpleados: rechazar,
+    leerEmpleado: rechazar,
+    altaEmpleado: rechazar,
+    editarNombre: rechazar,
+    editarTelefono: rechazar,
+    editarEmail: rechazar,
+    editarNota: rechazar,
+    borrarEmpleado: rechazar,
+    leerRangosDeVacaciones: rechazar,
+    contarDiasConContenido: rechazar,
+    marcarRangoDeVacaciones: rechazar,
+    eliminarRangoDeVacaciones: rechazar,
+    leerSemana: rechazar,
+    leerCelda: rechazar,
+    crearTurno: rechazar,
+    editarTurno: rechazar,
+    eliminarTurno: rechazar,
+    marcarAusencia: rechazar,
+    marcarVacaciones: rechazar,
+    vaciarCelda: rechazar,
+    // Suscribirse no es una operación sobre los datos: nunca habrá ningún cambio
+    // del que avisar, así que se admite y no llama a nadie.
+    suscribirse: () => () => {},
+  };
 }
 
 /** Almacén que usa la app en ejecución. */

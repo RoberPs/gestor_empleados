@@ -55,6 +55,13 @@ mantener durante años. La interfaz `AlmacenCuadrante` **ya es** la abstracción
 **Dependencias nuevas**: solo `expo-sqlite`, que el contexto del proyecto fija como el
 mecanismo de datos y sin la cual este change no existe. Ninguna otra.
 
+**Matiz añadido al implementar (07/09/2026)**: el SQL no habla con `expo-sqlite` directamente,
+sino con una interfaz de cuatro métodos —`ejecutar`, `escribir`, `leer`, `cerrar`— declarada en
+`src/datos/sqlite/bd.ts`. En la app la implementa `expo-sqlite`; en los tests, `node:sqlite`.
+Ver D10, que explica por qué hizo falta. No es una capa de repositorios: no conoce empleados ni
+ninguna otra entidad, solo cadenas de SQL y parámetros, y el SQL de las migraciones y de las
+operaciones se escribe **una sola vez**, no una por implementación.
+
 ### D2. API **síncrona** de `expo-sqlite` (`openDatabaseSync`, `getAllSync`, `runSync`)
 
 `expo-sqlite` ofrece API síncrona y asíncrona. Se usa la síncrona.
@@ -197,10 +204,47 @@ escribir: eso presentaría al encargado una plantilla vacía y le invitaría a t
 encima de los datos que sí están ahí. Lo que expone es un estado de "no disponible", del que
 toda lectura y toda escritura son rechazadas.
 
-Qué ve el encargado en ese estado es un hueco de la spec —requisito «Comportamiento cuando el
-almacenamiento no puede abrirse»— y decide dónde encaja la pantalla, no el esquema. La forma
-concreta de exponer ese estado a través de `AlmacenCuadrante` queda atada a esa respuesta,
-porque es lo que determina si la interfaz necesita algo nuevo o no. Ver Open Questions.
+**Cerrado el 07/09/2026**: el encargado ve, en lugar del cuadrante y ocupando la app entera, un
+aviso en lenguaje llano —sus datos no se han podido abrir, no se ha borrado nada— con una acción
+para volver a intentarlo. Ninguna otra pantalla es alcanzable mientras tanto.
+
+*Consecuencia sobre la interfaz*: `AlmacenCuadrante` **no cambia**. Como el aviso sustituye a
+toda la app, ninguna pantalla llega a consultar el almacén en ese estado, así que no hace falta
+que la interfaz sepa expresar "no disponible". El estado vive donde se abre la base de datos
+—`app/_layout.tsx`—, que decide entre pintar el aviso o el `Stack` de siempre. Lo que se instala
+con `instalarAlmacen` cuando la apertura falla es un almacén que lanza en toda operación: no un
+almacén vacío que se dejaría escribir. Es una red de seguridad, no la vía normal; si alguna vez
+se dispara es que una pantalla se ha colado por delante del aviso, y conviene que se note.
+
+### D10. El SQL corre contra una interfaz de cuatro métodos, no contra `expo-sqlite`
+
+`src/datos/sqlite/bd.ts` declara `BaseDeDatos`: `ejecutar(sql)`, `escribir(sql, ...params)`,
+`leer(sql, ...params)` y `cerrar()`. `src/datos/sqlite/bdExpoSqlite.ts` la implementa sobre
+`openDatabaseSync` y es **el único módulo del proyecto que importa `expo-sqlite`**.
+`src/pruebas/bdDePrueba.ts` la implementa sobre `node:sqlite`, y solo los tests lo importan.
+
+*Por qué hizo falta*: `expo-sqlite` no se puede ejecutar de verdad bajo `jest-expo` en Node. Su
+propio código lo dice —`web/SQLiteModule.node.ts`: «expo-sqlite is not supported on server
+runtime, this file contains a dummy implementation»—: en Node abre, ejecuta y devuelve vacío
+**sin lanzar ningún error**. Un test contra esa implementación pasaría diga lo que diga el SQL,
+que es peor que no tener test. La ruta nativa, por su parte, necesita el módulo nativo, que en
+Node no existe.
+
+Sin este seam, los escenarios de durabilidad, de migración, de índice único y de orden se
+quedaban sin comprobación automática y había que llevárselos todos a
+`docs/verificacion-manual.md` —que además hoy no se puede recorrer, porque los escenarios de
+arranque piden un build instalable que el proyecto todavía no tiene—. Con él, `npm test`
+ejecuta el SQL real de la app contra SQLite real: `PRAGMA user_version`, `AUTOINCREMENT`, el
+índice único sobre `nombre_comparable`, `PRAGMA foreign_keys` y el cierre y reapertura de un
+fichero de verdad.
+
+*Por qué `node:sqlite` y no `better-sqlite3`*: viene dentro de Node 22, que es el que ejecuta la
+suite, así que no añade ninguna dependencia ni ningún binario que compilar. Es SQLite el mismo,
+comprobado con `PRAGMA user_version`, `AUTOINCREMENT` y el índice único.
+
+*Trade-off*: los tests no ejercitan el adaptador de `expo-sqlite`, que queda cubierto solo por
+la verificación en el dispositivo. Es una envoltura de cuatro métodos sin lógica propia, y es lo
+máximo que se puede cubrir mientras la librería no funcione fuera del dispositivo.
 
 ### D9. Un único fichero, con nombre neutro, en el directorio de la app
 
@@ -216,9 +260,30 @@ responsable: el contexto del proyecto dice que ninguno de los tres se fija en c�
 
 - **`expo-sqlite` no funciona igual fuera del dispositivo** (Node en los tests, y el navegador
   con `npm run web`) → Los tests de UI existentes no se ven afectados: siguen inyectando
-  `crearAlmacenEnMemoria` con `instalarAlmacen`, que no toca SQLite. Lo que queda por resolver
-  es cómo se comprueban los escenarios de esta capability, que son precisamente los que exigen
-  SQLite de verdad. Ver Open Questions.
+  `crearAlmacenEnMemoria` con `instalarAlmacen`, que no toca SQLite. Los escenarios de esta
+  capability se comprueban contra `node:sqlite` a través del seam de D10.
+
+  **En web la app arranca directamente en el aviso de almacenamiento**, y es correcto: ahí no
+  hay base de datos que abrir. Comprobado el 07/09/2026 sobre el servidor de desarrollo, por dos
+  motivos independientes, cualquiera de los dos suficiente:
+
+  1. La API síncrona de `expo-sqlite` en web pasa por `invokeWorkerSync`, que hace
+     `new SharedArrayBuffer(4)`. El navegador solo expone `SharedArrayBuffer` a una página
+     *cross-origin isolated*, y el servidor de Expo no manda `Cross-Origin-Opener-Policy` ni
+     `Cross-Origin-Embedder-Policy`. Lanza en la primera apertura.
+  2. `getWorker()` carga `new Worker(new URL('./worker', location.href))`, y bajo expo-router
+     `/worker` devuelve el HTML de la app con `content-type: text/html`, no el worker.
+
+  **Decisión (07/09/2026): no se arregla.** El producto es un binario instalable en el móvil del
+  encargado; web no es un objetivo y arreglarlo pide tocar `metro.config.js` y cómo se empaqueta
+  ese worker, con resultado incierto. `npm run web` deja de servir para mirar esta app: se mira
+  con `npx expo start` en el móvil. Se descartó montar en web un almacén en memoria porque es
+  justo lo que D8 prohíbe —una plantilla vacía que además se deja escribir—, y tenerlo en una
+  plataforma y no en otra invita a comprobar ahí cosas que no significan nada.
+
+  Para que esto no haya que volver a investigarlo, `abrirAlmacenamiento` escribe el fallo real en
+  la consola bajo `__DEV__`: el aviso sigue sin enseñarle ningún detalle técnico al encargado, y
+  quien desarrolla ve por qué no abrió.
 
 - **Las escrituras síncronas bloquean el hilo de JavaScript** (D2) → A esta escala es
   imperceptible. El riesgo real llegaría con la tabla de horas registradas, que es de otro
@@ -257,15 +322,13 @@ de los empleados.
 
 ## Open Questions
 
-- **¿Cómo se comprueban automáticamente los escenarios de esta capability?** Los escenarios de
-  durabilidad, primera ejecución y migración solo significan algo contra SQLite de verdad, y
-  está por confirmar si `expo-sqlite` se puede ejecutar bajo `jest-expo` en Node o si esos
-  escenarios se comprueban en el dispositivo y se anotan en `docs/verificacion-manual.md`. La
-  respuesta cambia la forma de la última task, no el esquema ni la spec, y se decide al empezar
-  a implementar. Queda marcada como hueco en `tasks.md`.
+Las dos que había quedaron respondidas el **07/09/2026**, al empezar a implementar:
 
-- **¿Qué observa el encargado cuando la base de datos no puede abrirse?** Hueco abierto en la
-  spec. Mientras no se responda, no se puede cerrar cómo expone la capa de datos ese estado
-  (D8) ni escribir la task de la pantalla correspondiente. Esta pregunta **sí** afecta a la
-  spec, así que no es de las que se pueden dejar para el final: hay que responderla antes de
-  implementar el arranque.
+- **¿Cómo se comprueban automáticamente los escenarios de esta capability?** Con el seam de
+  cuatro métodos de D10: el SQL de la app corre en los tests contra `node:sqlite`. Se comprobó
+  antes de decidir que `expo-sqlite` bajo `jest-expo` es una implementación vacía que no lanza
+  errores, y que `node:sqlite` soporta lo que este esquema necesita.
+
+- **¿Qué observa el encargado cuando la base de datos no puede abrirse?** Un aviso que ocupa la
+  app entera, con una acción para volver a intentarlo. Recogido ya en el requisito
+  «Comportamiento cuando el almacenamiento no puede abrirse» de la spec y en D8.

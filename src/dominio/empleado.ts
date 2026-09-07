@@ -27,8 +27,18 @@ export function sanearCampo(texto: string): string {
  * Forma del nombre con la que se comprueba la unicidad: sin distinguir mayúsculas
  * y sin espacios sobrantes, ni en los extremos ni entre palabras. `ana` y `Ana `
  * son el mismo nombre; `Ana G.` no.
+ *
+ * **Cambiarla obliga a una migración.** La base de datos guarda su resultado en la
+ * columna `empleados.nombre_comparable`, sobre la que hay un índice único: es lo que
+ * hace que un nombre repetido lo rechace el esquema y no la buena memoria de quien
+ * escribe la pantalla. La comparación no la puede hacer SQLite —su `LOWER()` solo
+ * baja a minúsculas el ASCII, así que `ÁNGEL` y `Ángel` le parecerían distintos—,
+ * así que esta función es la única que decide qué es el mismo nombre. Si cambia su
+ * criterio, las filas que ya están guardadas conservan el anterior, el índice mezcla
+ * dos criterios y una unicidad se puede colar: hay que añadir una migración que
+ * recalcule la columna entera.
  */
-function formaComparable(nombre: string): string {
+export function formaComparable(nombre: string): string {
   return nombre.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-ES');
 }
 

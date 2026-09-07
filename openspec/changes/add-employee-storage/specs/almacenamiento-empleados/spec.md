@@ -320,10 +320,18 @@ seguir arrancando: los datos que haya MUST conservarse intactos para un intento 
 El sistema MUST NOT aceptar altas, ediciones ni bajas mientras el almacenamiento no esté
 abierto, para no dar por guardado lo que no se ha guardado.
 
-Lo que el encargado ve en ese caso queda pendiente de decidir.
-**[hueco: confirmar qué debe observar el encargado cuando el almacenamiento no puede abrirse
-—qué se le dice, si puede reintentar, si puede seguir usando la app y qué hace con un fichero
-dañado—]**
+En ese caso el sistema MUST mostrar al encargado, en lugar del cuadrante y ocupando la app
+entera, un aviso que diga en lenguaje llano que sus datos no se han podido abrir y que no se ha
+borrado nada. Ese aviso MUST ofrecer una acción para volver a intentarlo, y MUST NOT dejar
+alcanzable ninguna otra pantalla mientras el almacenamiento siga sin abrirse: ni el cuadrante,
+ni el panel de empleados, ni la ficha.
+
+Cuando el encargado vuelve a intentarlo, el sistema MUST reintentar la apertura y, si esta vez
+funciona, MUST continuar hasta el cuadrante con los datos que había. Si vuelve a fallar, MUST
+seguir mostrando el mismo aviso.
+
+El aviso MUST NOT mostrar detalles técnicos —ni nombres de fichero, ni códigos, ni números de
+versión del almacenamiento— y MUST NOT ofrecer al encargado borrar ni reiniciar sus datos.
 
 #### Scenario: Arrancar con el almacenamiento dañado
 
@@ -332,7 +340,17 @@ dañado—]**
 - **THEN** el sistema no muestra una plantilla vacía como si no hubiera empleados
 - **AND** no borra ni sobrescribe el fichero existente
 - **AND** no acepta ninguna alta, edición ni baja
-- **AND** lo que se le muestra al encargado es **[hueco: confirmar qué debe observar]**
+- **AND** en lugar del cuadrante ve un aviso que dice que sus datos no se han podido abrir y que
+  no se ha borrado nada, con una acción para volver a intentarlo
+- **AND** no puede llegar al cuadrante, ni al panel de empleados, ni a ninguna ficha
+
+#### Scenario: Volver a intentarlo cuando el almacenamiento ya se puede abrir
+
+- **WHEN** el encargado está viendo el aviso de que sus datos no se han podido abrir
+- **AND** el motivo del fallo ha dejado de darse
+- **AND** toca la acción de volver a intentarlo
+- **THEN** el sistema abre el almacenamiento
+- **AND** el encargado pasa al cuadrante con su plantilla completa
 
 #### Scenario: Arrancar con un almacenamiento de una versión posterior de la app
 
@@ -341,4 +359,5 @@ dañado—]**
 - **AND** el encargado abre la app
 - **THEN** el sistema no lo adapta ni lo abre
 - **AND** conserva el fichero intacto
-- **AND** lo que se le muestra al encargado es **[hueco: confirmar qué debe observar]**
+- **AND** ve el mismo aviso de que sus datos no se han podido abrir, sin ningún detalle técnico
+  sobre versiones de almacenamiento
