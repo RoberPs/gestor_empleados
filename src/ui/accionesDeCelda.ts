@@ -1,0 +1,98 @@
+/**
+ * Acciones que ofrece una celda al tocarla. Dependen únicamente del estado de la
+ * celda, nunca de la semana a la que pertenece: una celda de una semana pasada
+ * ofrece exactamente las mismas acciones que una de la semana en curso.
+ *
+ * Fuera de la celda se usan siempre las palabras completas "ausencia" y
+ * "vacaciones": las abreviaturas `AUS` y `VAC` solo viven dentro de la rejilla.
+ */
+
+import type { ContenidoCelda, TurnoPlanificado } from '../dominio/tipos';
+import { describirTurno } from '../dominio/turno';
+
+export type AccionCelda =
+  | { readonly tipo: 'crear-turno' }
+  | { readonly tipo: 'anadir-segundo-turno' }
+  | { readonly tipo: 'editar-turno'; readonly turno: TurnoPlanificado }
+  | { readonly tipo: 'eliminar-turno'; readonly turno: TurnoPlanificado }
+  | { readonly tipo: 'marcar-ausencia' }
+  | { readonly tipo: 'marcar-vacaciones' }
+  | { readonly tipo: 'eliminar-contenido' };
+
+/** Acciones disponibles para cada uno de los cuatro estados de la celda. */
+export function accionesPara(contenido: ContenidoCelda): AccionCelda[] {
+  switch (contenido.tipo) {
+    case 'vacia':
+      return [{ tipo: 'crear-turno' }, { tipo: 'marcar-ausencia' }, { tipo: 'marcar-vacaciones' }];
+
+    case 'turnos': {
+      if (contenido.turnos.length === 1) {
+        const [turno] = contenido.turnos;
+        return [
+          { tipo: 'editar-turno', turno },
+          { tipo: 'anadir-segundo-turno' },
+          { tipo: 'marcar-ausencia' },
+          { tipo: 'marcar-vacaciones' },
+          { tipo: 'eliminar-turno', turno },
+        ];
+      }
+      // Dos turnos: se editan y se eliminan por separado, y no se ofrece un tercero.
+      const [primero, segundo] = contenido.turnos;
+      return [
+        { tipo: 'editar-turno', turno: primero },
+        { tipo: 'editar-turno', turno: segundo },
+        { tipo: 'marcar-ausencia' },
+        { tipo: 'marcar-vacaciones' },
+        { tipo: 'eliminar-turno', turno: primero },
+        { tipo: 'eliminar-turno', turno: segundo },
+      ];
+    }
+
+    case 'ausencia':
+      return [
+        { tipo: 'marcar-vacaciones' },
+        { tipo: 'crear-turno' },
+        { tipo: 'eliminar-contenido' },
+      ];
+
+    case 'vacaciones':
+      return [{ tipo: 'marcar-ausencia' }, { tipo: 'crear-turno' }, { tipo: 'eliminar-contenido' }];
+  }
+}
+
+/** Texto que ve el encargado, siempre con las palabras completas. */
+export function etiquetaDeAccion(accion: AccionCelda, contenido: ContenidoCelda): string {
+  switch (accion.tipo) {
+    case 'crear-turno':
+      return contenido.tipo === 'vacia'
+        ? 'Crear turno planificado'
+        : 'Sustituir por un turno planificado';
+    case 'anadir-segundo-turno':
+      return 'Añadir un segundo turno ese mismo día';
+    case 'editar-turno':
+      return `Editar el turno de ${describirTurno(accion.turno)}`;
+    case 'eliminar-turno':
+      return `Eliminar el turno de ${describirTurno(accion.turno)}`;
+    case 'marcar-ausencia':
+      if (contenido.tipo === 'vacia') return 'Marcar ausencia';
+      if (contenido.tipo === 'vacaciones') return 'Cambiar a ausencia';
+      return 'Sustituir por ausencia';
+    case 'marcar-vacaciones':
+      if (contenido.tipo === 'vacia') return 'Marcar vacaciones';
+      if (contenido.tipo === 'ausencia') return 'Cambiar a vacaciones';
+      return 'Sustituir por vacaciones';
+    case 'eliminar-contenido':
+      return contenido.tipo === 'ausencia' ? 'Eliminar la ausencia' : 'Eliminar las vacaciones';
+  }
+}
+
+/** Identificador estable de la acción, para poder localizarla en los tests. */
+export function idDeAccion(accion: AccionCelda): string {
+  switch (accion.tipo) {
+    case 'editar-turno':
+    case 'eliminar-turno':
+      return `accion-${accion.tipo}-${accion.turno.id}`;
+    default:
+      return `accion-${accion.tipo}`;
+  }
+}
