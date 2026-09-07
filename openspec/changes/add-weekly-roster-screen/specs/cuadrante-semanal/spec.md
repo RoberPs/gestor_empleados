@@ -240,9 +240,13 @@ Las acciones ofrecidas MUST depender del estado de la celda:
 
 Al terminar o cancelar la acción, el encargado MUST volver al cuadrante en la misma semana desde la que la inició, con la celda ya actualizada si hubo cambio.
 
-Las horas del turno planificado MUST introducirse y mostrarse en formato 24h.
+Las horas del turno planificado MUST mostrarse siempre en formato 24h `hh:mm`.
+
+Al introducirlas, el sistema MUST admitir las formas naturales de teclear una hora con el teclado numérico de un móvil, y MUST normalizarlas a `hh:mm`: con separador (`9:30`, `09:30`, `9.30`, `9,30`, `9h30`), solo dígitos (`930`, `0930`) y la hora sola cuando es en punto (`9` equivale a `09:00`). El sistema MUST NOT exigir una única forma de escritura, y MUST seguir rechazando lo que no sea una hora del día.
 
 El sistema MUST NOT permitir guardar un turno planificado cuya hora de fin coincide con su hora de inicio, e informará de por qué no puede guardarse sin perder lo ya introducido. Una hora de fin anterior a la de inicio MUST aceptarse: es un turno que cruza la medianoche.
+
+Cuando el encargado corrige una hora, esa explicación MUST desaparecer: no debe leerse que sigue sin poder guardarse un turno que ya es válido.
 
 Eliminar un turno planificado, una ausencia o unas vacaciones MUST requerir una confirmación explícita del encargado antes de que el contenido desaparezca de la celda. Si el encargado no confirma, la celda MUST conservar el contenido que tenía. El sistema MUST NOT ofrecer deshacer una eliminación ya confirmada.
 
@@ -310,6 +314,20 @@ Eliminar un turno planificado, una ausencia o unas vacaciones MUST requerir una 
 - **THEN** el sistema no lo guarda
 - **AND** le indica por qué no puede guardarse
 - **AND** las horas que había introducido siguen ahí para corregirlas
+
+#### Scenario: Teclear la hora sin los dos puntos
+
+- **WHEN** el encargado crea un turno planificado y teclea `930` como hora de inicio y `1745` como hora de fin
+- **THEN** el sistema lo guarda
+- **AND** la celda muestra `09:30` y `17:45`
+
+#### Scenario: Corregir una hora que el sistema no entiende
+
+- **WHEN** el encargado intenta guardar un turno con una hora que el sistema no entiende
+- **THEN** el sistema le indica por qué no puede guardarse
+- **WHEN** corrige esa hora
+- **THEN** esa explicación desaparece
+- **AND** puede guardar el turno
 
 #### Scenario: Crear un turno que cruza la medianoche
 

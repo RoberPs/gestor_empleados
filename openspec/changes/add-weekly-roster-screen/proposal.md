@@ -44,6 +44,8 @@ Ninguna. No existe ninguna spec viva en `openspec/specs/`: este es el primer cha
 - **2026-09-07 — El acceso al panel de empleados apunta a una pantalla provisional dentro de este change.** Una ruta mínima que solo confirma la navegación y el regreso a la misma semana; el change del panel de empleados la sustituye sin tocar el cuadrante. Motivo: no bloquear la pantalla de entrada del producto a la espera de otro change.
 - **2026-09-07 — Las filas se ordenan alfabéticamente por el campo nombre, sin agrupar por puesto.** Motivo: el puesto (cocina, sala) no existe en la ficha de empleado y no se introduce aquí; el orden alfabético es estable y predecible entre semanas.
 - **2026-09-07 — La semana en curso se recalcula cada vez que la app vuelve a primer plano.** Motivo: la app se queda abierta en el bolsillo; si el encargado la retoma pasada la medianoche del domingo debe ver la semana nueva, no la anterior. No se recalcula mientras la pantalla está en primer plano, para no mover el cuadrante bajo el dedo.
+- **2026-09-07 — Al teclear una hora se admite cualquier forma razonable; al mostrarla, siempre `hh:mm`.** Motivo: exigir los dos puntos dejaba fuera media hora sin ninguna razón de negocio. El teclado numérico del móvil no siempre ofrece `:`, y el encargado teclea `930` o `9.30` con la misma naturalidad que `9:30`. La pantalla normaliza a `hh:mm`, así que el cuadrante sigue leyéndose igual. Se descarta un selector de horas: obliga a más toques que teclear cuatro dígitos.
+- **2026-09-07 — El aviso de por qué un turno no se puede guardar desaparece al corregir la hora.** Motivo: si se queda en pantalla, el encargado lee que sigue sin poder guardar un turno que ya es válido, y da por roto lo que funciona.
 
 ## Dependencias
 
@@ -64,3 +66,12 @@ Comportamientos de dominio que esta pantalla necesita y que **no se especifican 
 - **Datos**: ninguno propio. La pantalla lee turnos planificados, ausencias, vacaciones y empleados de los modelos que definan los changes de persistencia y de panel de empleados.
 - **Privacidad**: la pantalla muestra únicamente el nombre del empleado; no muestra teléfono ni email.
 - **Verificación**: buena parte de los escenarios son visuales (legibilidad y área pulsable con 20 empleados, ausencia de scroll horizontal en una pantalla de 360 pt, legibilidad de una celda con dos tramos) y se comprobarán en `docs/verificacion-manual.md` citando el nombre literal del escenario.
+
+## Deuda conocida al cerrar el change
+
+Detectada al ejecutar la app y **diferida deliberadamente** a un change aparte de diseño estético y responsive:
+
+- La cabecera de semana se descuadra a 360 pt: el rango se parte en tres líneas y la cabecera ocupa unos 330 de los 780 pt de alto.
+- El turno partido se muestra como cuatro horas apiladas sin separación visible entre los dos tramos. Cumple el escenario "Ver un turno partido en su celda", pero no la comprobación visual anotada en `docs/verificacion-manual.md`.
+
+Los nueve escenarios de `docs/verificacion-manual.md` siguen sin comprobar en un dispositivo real; se comprobarán junto con ese change.

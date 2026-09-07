@@ -170,7 +170,7 @@ describe('Toda celda es editable desde el cuadrante', () => {
     expect(within(celda(ana.id, LUNES)).getByText('17:00')).toBeTruthy();
   });
 
-  it('la explicación de por qué no se guarda desaparece al corregir la hora', async () => {
+  it('Corregir una hora que el sistema no entiende', async () => {
     const { empleado } = await renderizarCuadrante({ plantilla: ['Ana'] });
     const ana = empleado('Ana');
 
@@ -202,7 +202,7 @@ describe('Toda celda es editable desde el cuadrante', () => {
     expect(within(celda(ana.id, LUNES)).getByText('17:45')).toBeTruthy();
   });
 
-  it('acepta las horas tecleadas con el teclado numérico y las muestra en 24h', async () => {
+  it('Teclear la hora sin los dos puntos', async () => {
     const { empleado } = await renderizarCuadrante({ plantilla: ['Ana'] });
     const ana = empleado('Ana');
 

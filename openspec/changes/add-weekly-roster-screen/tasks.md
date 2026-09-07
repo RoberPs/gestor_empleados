@@ -76,3 +76,4 @@ Frontera con los changes pendientes listados en `proposal.md` — Dependencias: 
 - [x] 9.1 Revisar que todos los textos de la pantalla están en español de España, que no hay ningún literal en otro idioma y que las únicas abreviaturas son `AUS` y `VAC` dentro de la celda; verificar con un test que cubre el escenario "Formatos de la pantalla"
 - [x] 9.2 Comprobar que cada escenario de `specs/cuadrante-semanal/spec.md` está citado literalmente en un test o en `docs/verificacion-manual.md`; verificar recorriendo la spec escenario a escenario que ninguno queda sin cubrir
 - [x] 9.3 Ejecutar `npm test` y `tsc --noEmit`; verificar que ambos pasan sin errores
+- [x] 9.4 Citar literalmente en la suite los escenarios "Teclear la hora sin los dos puntos" y "Corregir una hora que el sistema no entiende", renombrando los tests que ya cubren esa conducta; verificar con `npm test` que ambos nombres aparecen tal cual y que la suite pasa
