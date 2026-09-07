@@ -110,6 +110,24 @@ distinguen dos celdas de un vistazo.
   es Lunes y el de la última, Domingo.
 - **Última comprobación**: pendiente.
 
+### Rango de fechas de la semana visible
+
+- **Capability**: cuadrante-semanal
+- **Requisito**: Identificación de la semana en pantalla
+- **Cómo se comprueba**: abrir el cuadrante en un dispositivo de 360 puntos de ancho
+  en orientación vertical y mirar la cabecera, primero en la semana en curso y
+  después tras tocar `Semana siguiente`.
+- **Qué se debe observar**: el rango se lee de corrido en horizontal,
+  `07/09/2026 - 13/09/2026`, en una sola línea y sin partirse. La indicación
+  `Semana en curso` se lee igual, en horizontal, y desaparece al desplazarse a otra
+  semana. Las acciones `Semana anterior` y `Semana siguiente` se leen enteras, cada
+  una en su lado. Ningún texto de la cabecera aparece en vertical, letra bajo letra.
+- **Por qué está aquí**: el test comprueba el **contenido** del texto, no su
+  geometría. El 07/09/2026 el rango compartía fila con las dos acciones de
+  navegación, se quedaba sin ancho y se dibujaba en vertical, un carácter por línea,
+  con la suite en verde. Solo se ve mirando la pantalla.
+- **Última comprobación**: pendiente.
+
 ### El cuadrante en la pantalla más estrecha soportada
 
 - **Capability**: cuadrante-semanal

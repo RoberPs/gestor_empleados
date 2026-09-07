@@ -34,6 +34,22 @@ export function CabeceraSemana({
 }: Props) {
   return (
     <View style={estilos.cabecera}>
+      {/*
+        El rango ocupa su propia fila, a lo ancho de la pantalla. Compartiéndola con
+        las dos acciones de navegación se quedaba sin ancho a 360 puntos y el texto
+        se partía carácter a carácter, en vertical.
+      */}
+      <View style={estilos.identificacion}>
+        <Text testID="rango-de-la-semana" style={estilos.rango}>
+          {formatearRangoDeSemana(semana)}
+        </Text>
+        {esLaSemanaEnCurso ? (
+          <Text testID="indicacion-semana-en-curso" style={estilos.semanaEnCurso}>
+            {TEXTO_SEMANA_EN_CURSO}
+          </Text>
+        ) : null}
+      </View>
+
       <View style={estilos.filaSuperior}>
         <Pressable
           testID="accion-semana-anterior"
@@ -44,17 +60,6 @@ export function CabeceraSemana({
         >
           <Text style={estilos.textoBoton}>Semana anterior</Text>
         </Pressable>
-
-        <View style={estilos.identificacion}>
-          <Text testID="rango-de-la-semana" style={estilos.rango}>
-            {formatearRangoDeSemana(semana)}
-          </Text>
-          {esLaSemanaEnCurso ? (
-            <Text testID="indicacion-semana-en-curso" style={estilos.semanaEnCurso}>
-              {TEXTO_SEMANA_EN_CURSO}
-            </Text>
-          ) : null}
-        </View>
 
         <Pressable
           testID="accion-semana-siguiente"
@@ -115,14 +120,16 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
   },
   identificacion: {
-    flexShrink: 1,
+    // Sin `flexShrink`: es una fila entera para él, no compite por el ancho con nadie.
     alignItems: 'center',
+    gap: 2,
   },
   rango: {
     fontSize: tipografia.titulo,
     fontWeight: '700',
     color: colores.texto,
     fontVariant: ['tabular-nums'],
+    textAlign: 'center',
   },
   semanaEnCurso: {
     fontSize: tipografia.cuerpo,
