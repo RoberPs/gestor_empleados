@@ -1,0 +1,78 @@
+schema: spec-driven
+
+# Se inyecta en TODAS las generaciones de artefactos. Conciso a propósito.
+context: |
+  App móvil de gestión de turnos para un restaurante español con una plantilla
+  de 10 a 20 empleados. La usa solo el encargado en su móvil; los empleados
+  nunca entran en ella. El encargado no tiene perfil técnico.
+
+  El nombre comercial de la app, el nombre del local y el del responsable no se
+  fijan en código: son datos editables desde la propia app (spec pendiente).
+  Ningún artefacto debe dar por hecho un nombre concreto.
+
+  Cubre tres cosas y solo tres: planificar el cuadrante semanal (turnos,
+  ausencias, vacaciones), registrar las horas realmente trabajadas por día y
+  empleado, y mantener la ficha de empleados (nombre, teléfono, email) desde un
+  panel de administración editable por el encargado.
+
+  Stack técnico (fijado; no se renegocia en propuestas):
+  - App: React Native con Expo SDK 57 (React Native 0.86, React 19.2) y
+    TypeScript. Un único binario instalable en el móvil del encargado. Sin
+    backend, sin servidor propio, sin cuenta en la nube.
+  - Navegación: expo-router. Estado: Zustand, con un único store; todo lo que
+    se pueda leer directamente de SQLite no se duplica en el store.
+  - Datos: SQLite local en el dispositivo con expo-sqlite (un único fichero).
+    Sin sincronización entre dispositivos.
+  - Exportación: el cuadrante y el registro de horas salen del dispositivo
+    como PDF y CSV mediante expo-print y expo-sharing (compartir por
+    mensajería, email o impresión). La exportación es la única vía por la que
+    un empleado recibe su horario y la única copia de seguridad que existe.
+  - Tests: suite automatizada; cada escenario de las specs debe quedar
+    comprobado citando su nombre literal, sea en un test o —cuando solo se
+    puede verificar mirando la pantalla— en docs/verificacion-manual.md.
+  - Autenticación: no hay. La app la protege el desbloqueo del propio móvil.
+    Sin multiusuario, sin roles. Sin Docker en desarrollo.
+
+  Principios innegociables:
+  1. Idioma y mercado: todo el producto (interfaz, textos, specs, commits,
+     documentación) en español de España. Semana de lunes a domingo, horas en
+     formato 24h, fechas dd/mm/aaaa.
+  2. Simplicidad ante todo: es un solo restaurante, no una cadena ni una
+     plataforma de recursos humanos. Ante dos soluciones, siempre la más
+     simple. Pero la escala real son 10-20 empleados: toda pantalla que liste
+     personas o turnos debe seguir siendo legible y manejable con 20 empleados
+     en plantilla, no solo con tres.
+  3. Un solo usuario: el encargado. Ninguna funcionalidad puede asumir que un
+     empleado abra la app, reciba una notificación ni confirme nada dentro de
+     ella.
+  4. Privacidad por diseño: la app guarda datos de contacto de los empleados
+     (nombre, teléfono, email), editables solo por el encargado en el panel de
+     empleados. Esos datos viven únicamente en el dispositivo: no se
+     sincronizan, no se envían a terceros y solo salen en exportaciones que el
+     encargado lanza a mano. Nada de analítica ni telemetría. Las exportaciones
+     de cuadrante y de horas no incluyen teléfono ni email.
+  5. La spec es la fuente de verdad: todo cambio de comportamiento observable
+     del sistema debe entrar como cambio de OpenSpec (propuesta + deltas) o
+     regularizarse como tal. Un comportamiento que openspec/specs/ no describe
+     es un defecto, aunque el código funcione.
+  6. Uso real: se maneja de pie, en la sala, con una mano y con prisa. Pocos
+     toques por operación, botones grandes, y la semana completa visible sin
+     scroll horizontal.
+  7. La app cuenta horas, no interpreta la ley: suma y muestra, pero no valida
+     límites de jornada ni descansos, no avisa de incumplimientos y no cita
+     convenio ni normativa. Nada de textos que suenen a asesoramiento laboral.
+
+# Reglas por artefacto: solo se inyectan al generar ese artefacto.
+rules:
+  specs:
+    - Redacta en español conservando la palabra normativa inglesa de cada
+      requisito (MUST/SHALL), p. ej. "El sistema MUST mostrar el cuadrante de
+      la semana en curso"
+    - Reutiliza los términos ya definidos en las specs vivas; no introduzcas
+      sinónimos nuevos para conceptos existentes
+    - Distingue siempre turno planificado de hora registrada; no uses un
+      término para el otro
+  proposal:
+    - Registra cada decisión de negocio en proposal.md con su fecha
+  design:
+    - Ninguna dependencia nueva sin justificación escrita
