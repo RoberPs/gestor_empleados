@@ -1,0 +1,28 @@
+## 1. El tema como única fuente de verdad del aspecto
+
+- [x] 1.1 Reescribir `colores` en `src/ui/tema.ts` con la paleta de la spec: nuevos valores, claves nuevas `accion`, `tintaAusencia` y `tintaVacaciones`, y `borde` renombrado a `lineaRejilla`. Verificar con `npm run typecheck`, que debe señalar todos los usos de `borde` pendientes de actualizar.
+- [x] 1.2 Añadir a `src/ui/tema.ts` los objetos `pesos` (`regular` 400, `medium` 500, `bold` 700) y la constante de cifras tabulares, y documentar en el propio fichero el papel de cada color y su ratio de contraste según la tabla de `design.md` — Decisions. Verificar que cada valor de la tabla de la spec aparece en el fichero exactamente una vez.
+- [x] 1.3 Anotar en `src/ui/tema.ts` que la app tiene un único aspecto claro y que ninguna pantalla define colores ni tamaños propios, para que la regla se lea donde se rompe. Verificar con `grep` que no queda ningún literal hexadecimal ni `rgba(` fuera de `tema.ts` en `src/`.
+
+## 2. La rejilla del cuadrante
+
+- [x] 2.1 Aplicar la paleta y los pesos en `src/ui/CeldaCuadrante.tsx`: horas a peso medium con cifras tabulares, etiqueta `AUS` con `tintaAusencia` sobre `fondoAusencia` y borde continuo, etiqueta `VAC` con `tintaVacaciones` sobre `fondoVacaciones` y borde discontinuo. Verificar que `npm test` sigue en verde y que la celda vacía sigue sin texto.
+- [x] 2.2 Aplicar en `src/ui/RejillaCuadrante.tsx` la línea de rejilla a `lineaRejilla` y 1 punto en las separaciones entre celdas y entre filas, y la jerarquía de la cabecera: nombre del día a peso medium sin mayúsculas y conservando su ajuste automático de tamaño, día del mes en bold con cifras tabulares. Verificar con `npm test` que los anchos declarados y el área pulsable de las celdas no cambian.
+- [x] 2.3 Añadir un test que compruebe la jerarquía declarada de la cabecera —tamaños y pesos del nombre del día y del día del mes— citando el escenario «Jerarquía dentro de la cabecera de la rejilla». Verificar que el test falla si se intercambian los dos estilos.
+- [x] 2.4 Aplicar la paleta en `src/ui/LeyendaEtiquetas.tsx` para que las muestras de `AUS` y `VAC` de la leyenda coincidan exactamente con las de la celda. Verificar con `npm test` que los textos «Ausencia» y «Vacaciones» siguen presentes.
+
+## 3. Cabecera, pantallas y formularios
+
+- [x] 3.1 Aplicar la paleta en `src/ui/CabeceraSemana.tsx`: acciones en color `accion` con peso medium y sin subrayado, rango de la semana en bold con cifras tabulares, indicación de semana en curso sobre `fondoSemanaEnCurso`. Verificar con `npm test` que los `testID` y los textos de las acciones no cambian y que el área pulsable mínima se conserva.
+- [x] 3.2 Aplicar la paleta y los pesos en `src/ui/PantallaCuadrante.tsx`, `src/ui/EstadoVacio.tsx` y `src/ui/AvisoAlmacenamiento.tsx`. Verificar con `npm test` que el estado vacío y el aviso de almacenamiento siguen mostrando sus textos y su acción.
+- [x] 3.3 Aplicar la paleta y los pesos en `src/ui/PantallaEmpleados.tsx` y `src/ui/PantallaFichaEmpleado.tsx`, con el nombre del empleado al mismo color y peso que en el cuadrante. Verificar con `npm test` que la lista y la ficha conservan sus textos y acciones.
+- [x] 3.4 Aplicar la paleta y los pesos en `src/ui/FormularioAltaEmpleado.tsx`, `src/ui/FormularioTurno.tsx` y `src/ui/VacacionesDeLaFicha.tsx`, con cifras tabulares en los campos de hora y de fecha. Verificar con `npm test` que los mensajes de validación y su desaparición al corregir siguen comportándose igual.
+- [x] 3.5 Aplicar la paleta en `src/ui/HojaAccionesCelda.tsx` y `src/ui/ConfirmacionEliminar.tsx`, con el mismo tratamiento de acción destructiva en las dos y el velo teñido de tinta. Verificar con `npm test` que las acciones ofrecidas por estado de celda no cambian.
+- [x] 3.6 Añadir un test que compruebe que la acción destructiva se declara con el mismo color y fondo en la hoja de acciones y en la confirmación de baja de un empleado, citando el escenario «La acción destructiva se reconoce en cualquier pantalla». Verificar que el test falla si una de las dos usa otro color.
+
+## 4. Cierre y comprobación
+
+- [x] 4.1 Ejecutar `npm run typecheck` y `npm test` completos y dejar los dos en verde, sin haber cambiado ninguna expectativa de texto ni de área pulsable de los tests existentes. Verificar que el diff de los tests solo contiene tests nuevos.
+- [x] 4.2 Anotar en `docs/verificacion-manual.md` los escenarios de `identidad-visual` que solo se resuelven mirando la pantalla, citando su nombre literal y con el formato ya establecido en el documento: «El cuadrante en escala de grises», «Las horas de dos filas quedan alineadas», «El rango de la semana no cambia de ancho al navegar», «La rejilla se lee con luz fuerte», «El texto sobre un fondo de estado sigue siendo legible», «Las horas de la celda se leen a un brazo de distancia», «El mismo elemento se ve igual en dos pantallas distintas», «Una ausencia no se confunde con un aviso de borrado», «Los estados de la celda se distinguen por su color» y «El tema oscuro del dispositivo no cambia la app». Verificar que ningún escenario de la spec queda sin citar ni en un test ni aquí.
+- [x] 4.3 Comprobar en el dispositivo, con la plantilla de 20 empleados y a 360 puntos de ancho, que la línea de rejilla se ve al sol sin convertir la pantalla en una reja, y anotar el resultado en `docs/verificacion-manual.md`. Si sobrecarga, aclarar solo la línea horizontal entre filas y volver a comprobarlo.
+- [x] 4.4 Comprobar en el dispositivo si Android aplica de verdad las cifras tabulares —dos filas con horas distintas en la misma columna deben quedar alineadas— y anotar el resultado. Si no las aplica, aplicar la salida prevista en `design.md` — Risks y registrar ahí lo que se haya hecho.
