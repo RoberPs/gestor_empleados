@@ -8,7 +8,7 @@
  * día pertenece la celda que está mirando.
  */
 
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { formatearDiaDelMes, formatearFecha, nombreDeDia } from '../dominio/formatos';
 import type { FechaISO, Semana } from '../dominio/semana';
@@ -27,6 +27,8 @@ interface Props {
   /** Escala de letra del dispositivo. Fija el alto de fila; por defecto, la del sistema. */
   readonly escalaDeLetra?: number;
   readonly onTocarCelda: (empleado: Empleado, dia: FechaISO) => void;
+  /** Un toque en el nombre de la fila abre la ficha de ese empleado. */
+  readonly onTocarNombre?: (empleado: Empleado) => void;
 }
 
 export function testIDdeCelda(idEmpleado: IdEmpleado, dia: FechaISO): string {
@@ -40,6 +42,7 @@ export function RejillaCuadrante({
   anchoDePantalla,
   escalaDeLetra,
   onTocarCelda,
+  onTocarNombre = () => {},
 }: Props) {
   const { fontScale } = useWindowDimensions();
   const dias = diasDeLaSemana(semana);
@@ -89,7 +92,17 @@ export function RejillaCuadrante({
               testID={`fila-empleado-${empleado.id}`}
               style={[estilos.fila, { height: alto }]}
             >
-              <View style={[estilos.columnaNombres, { width: anchos.nombres }]}>
+              {/* El nombre abre la ficha de ese empleado: es donde se lee entero el
+                  que aquí se trunca, y desde donde se consultan sus datos sin pasar
+                  por el panel. Ocupa exactamente la columna de nombres, ni un punto
+                  más: no le quita área a las celdas de día, que son sus vecinas. */}
+              <Pressable
+                testID={`columna-nombres-${empleado.id}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir la ficha de ${empleado.nombre}`}
+                onPress={() => onTocarNombre(empleado)}
+                style={[estilos.columnaNombres, { width: anchos.nombres }]}
+              >
                 {/* El nombre que no cabe se trunca con puntos suspensivos; las
                     columnas de día no se estrechan por ello. */}
                 <Text
@@ -100,7 +113,7 @@ export function RejillaCuadrante({
                 >
                   {empleado.nombre}
                 </Text>
-              </View>
+              </Pressable>
 
               {dias.map((dia) => (
                 <CeldaCuadrante

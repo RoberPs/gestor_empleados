@@ -27,17 +27,20 @@ describe('Alta de un empleado', () => {
 
     await tocar('accion-dar-de-alta');
     await escribir('campo-nombre-empleado', 'Bruno');
+    await escribir('campo-puesto-empleado', 'Cocina');
     await escribir('campo-telefono-empleado', '600 11 22 33');
     await escribir('campo-email-empleado', 'bruno@ejemplo.es');
     await tocar('accion-confirmar-alta');
 
-    // Vuelve a la lista, con Bruno en su posición alfabética.
+    // Vuelve a la lista, con Bruno en su posición alfabética y con su puesto.
     expect(screen.queryByTestId('formulario-alta-empleado')).toBeNull();
     expect(nombresDeLaLista()).toEqual(['Ana', 'Bruno', 'Carmen']);
-
-    // Y al abrir su ficha, el teléfono y el email están tal y como se teclearon.
     const bruno = empleadoLlamado(datos, 'Bruno');
+    expect(screen.getByTestId(`puesto-de-la-lista-${bruno.id}`)).toHaveTextContent('Cocina');
+
+    // Y al abrir su ficha, los tres están tal y como se teclearon.
     await tocar(`fila-de-la-lista-${bruno.id}`);
+    expect(screen.getByTestId('campo-puesto').props.value).toBe('Cocina');
     expect(screen.getByTestId('campo-telefono').props.value).toBe('600 11 22 33');
     expect(screen.getByTestId('campo-email').props.value).toBe('bruno@ejemplo.es');
   });
@@ -51,15 +54,52 @@ describe('Alta de un empleado', () => {
 
     expect(nombresDeLaLista()).toEqual(['Ana', 'Carmen']);
 
-    // Los campos de contacto están vacíos y se pueden rellenar.
+    // Los campos de puesto y de contacto están vacíos y se pueden rellenar.
     const carmen = empleadoLlamado(datos, 'Carmen');
     await tocar(`fila-de-la-lista-${carmen.id}`);
+    expect(screen.getByTestId('campo-puesto').props.value).toBe('');
     expect(screen.getByTestId('campo-telefono').props.value).toBe('');
     expect(screen.getByTestId('campo-email').props.value).toBe('');
 
     await escribir('campo-telefono', '600112233');
     await fireEvent(screen.getByTestId('campo-telefono'), 'endEditing');
     expect(datos.leerEmpleado(carmen.id)!.telefono).toBe('600112233');
+  });
+
+  it('Dos empleados con el mismo puesto', async () => {
+    const datos = await renderizarPanelDeEmpleados({
+      plantilla: [],
+      prepararDatos: (almacen) => almacen.altaEmpleado('Ana', undefined, undefined, 'Barra'),
+    });
+
+    await tocar('accion-dar-de-alta');
+    await escribir('campo-nombre-empleado', 'Bruno');
+    await escribir('campo-puesto-empleado', 'Barra');
+    await tocar('accion-confirmar-alta');
+
+    // El puesto no interviene en la unicidad del nombre: los dos se guardan.
+    expect(nombresDeLaLista()).toEqual(['Ana', 'Bruno']);
+    for (const nombre of ['Ana', 'Bruno']) {
+      const empleado = empleadoLlamado(datos, nombre);
+      expect(screen.getByTestId(`puesto-de-la-lista-${empleado.id}`)).toHaveTextContent('Barra');
+    }
+  });
+
+  it('el puesto del alta es texto libre: ni lista cerrada, ni formato, ni valor rechazado', async () => {
+    const datos = await renderizarPanelDeEmpleados({ plantilla: ['Ana'] });
+
+    await tocar('accion-dar-de-alta');
+    const campo = screen.getByTestId('campo-puesto-empleado');
+    // Ni longitud máxima, ni teclado especial, ni desplegable de opciones.
+    expect(campo.props.maxLength).toBeUndefined();
+    expect(campo.props.keyboardType).toBeUndefined();
+
+    await escribir('campo-nombre-empleado', 'Bruno');
+    await escribir('campo-puesto-empleado', '  Jefe de cocina y compras  ');
+    await tocar('accion-confirmar-alta');
+
+    // Se guarda tal cual se teclea, sin los espacios de los extremos.
+    expect(empleadoLlamado(datos, 'Bruno').puesto).toBe('Jefe de cocina y compras');
   });
 
   it('Un alta sin nombre no se guarda', async () => {

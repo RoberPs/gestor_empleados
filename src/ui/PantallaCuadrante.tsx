@@ -19,7 +19,7 @@ import {
   type FechaISO,
   type Semana,
 } from '../dominio/semana';
-import type { ContenidoCelda, Empleado, TurnoPlanificado } from '../dominio/tipos';
+import type { ContenidoCelda, Empleado, IdEmpleado, TurnoPlanificado } from '../dominio/tipos';
 import { CELDA_VACIA, PALABRA_AUSENCIA, PALABRA_VACACIONES } from '../dominio/tipos';
 import { describirTurno } from '../dominio/turno';
 import type { AccionCelda } from './accionesDeCelda';
@@ -52,15 +52,15 @@ export interface PropsPantallaCuadrante {
   readonly anchoDePantalla?: number;
   /** Navegación al panel de empleados. */
   readonly onIrAEmpleados?: () => void;
-  /** Navegación a los ajustes del local. */
-  readonly onIrAAjustes?: () => void;
+  /** Navegación a la ficha de un empleado, desde el nombre de su fila o desde una celda. */
+  readonly onAbrirFicha?: (idEmpleado: IdEmpleado) => void;
 }
 
 export function PantallaCuadrante({
   reloj = () => new Date(),
   anchoDePantalla,
   onIrAEmpleados = () => {},
-  onIrAAjustes = () => {},
+  onAbrirFicha = () => {},
 }: PropsPantallaCuadrante) {
   const datos = usarAlmacen();
   const { width } = useWindowDimensions();
@@ -94,7 +94,6 @@ export function PantallaCuadrante({
   // repintado: la pantalla no guarda copia propia de ninguno de los dos.
   const empleados = datos.listarEmpleados();
   const contenidoDeLaSemana = datos.leerSemana(semanaMostrada);
-  const nombreDelLocal = datos.leerNombreDelLocal();
 
   const cerrarDialogos = useCallback(() => {
     setDialogo(null);
@@ -130,6 +129,13 @@ export function PantallaCuadrante({
       case 'marcar-vacaciones':
         datos.marcarVacaciones(empleado.id, dia);
         cerrarDialogos();
+        return;
+      case 'ver-ausencia':
+        // El motivo vive en la ficha, no en la celda ni en esta hoja: se cierra el
+        // diálogo y se abre la ficha de ese empleado, de donde se vuelve aquí, a
+        // esta misma semana.
+        cerrarDialogos();
+        onAbrirFicha(empleado.id);
         return;
     }
   }
@@ -182,8 +188,6 @@ export function PantallaCuadrante({
         onSemanaSiguiente={() => setSemanaMostrada(semanaSiguiente(semanaMostrada))}
         onVolverALaSemanaEnCurso={() => setSemanaMostrada(semanaActual)}
         onIrAEmpleados={onIrAEmpleados}
-        onIrAAjustes={onIrAAjustes}
-        nombreDelLocal={nombreDelLocal}
       />
 
       <RejillaCuadrante
@@ -195,6 +199,7 @@ export function PantallaCuadrante({
           setCeldaAbierta({ empleado, dia });
           setDialogo({ tipo: 'acciones' });
         }}
+        onTocarNombre={(empleado) => onAbrirFicha(empleado.id)}
       />
 
       <LeyendaEtiquetas />

@@ -82,6 +82,26 @@ describe('La plantilla sobrevive al cierre de la app', () => {
     ]);
   });
 
+  it('El puesto y el motivo de la ausencia sobreviven al cierre', async () => {
+    const fichero = rutaDeFicheroDePrueba();
+    await arrancar(fichero);
+    const bruno = almacen().altaEmpleado('Bruno')!;
+
+    almacen().editarPuesto(bruno.id, 'Cocina');
+    almacen().editarMotivoAusencia(bruno.id, 'Baja médica hasta el 20/09/2026');
+
+    await arrancar(fichero);
+
+    // Las dos columnas que trajo la migración 3 guardan de verdad: si faltara
+    // cualquiera de las dos, este test lo diría.
+    expect(almacen().leerEmpleado(bruno.id)).toEqual({
+      id: bruno.id,
+      nombre: 'Bruno',
+      puesto: 'Cocina',
+      motivoAusencia: 'Baja médica hasta el 20/09/2026',
+    });
+  });
+
   it('La plantilla entera sobrevive a varias reaperturas', async () => {
     const fichero = rutaDeFicheroDePrueba();
     await arrancar(fichero);

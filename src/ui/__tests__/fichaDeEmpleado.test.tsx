@@ -48,6 +48,24 @@ describe('Apertura y regreso de la ficha del empleado', () => {
     expect(nombresDeLaLista()).toEqual(['Ana', 'Bruno', 'Carmen']);
   });
 
+  it('El nombre largo se lee entero en la ficha', async () => {
+    const nombreLargo = 'Maricarmen de la Fuente Etxebarria';
+    const datos = await renderizarPanelDeEmpleados({ plantilla: [nombreLargo] });
+
+    await abrirLaFichaDe(datos, nombreLargo);
+
+    // El título se reparte en las líneas que necesite: ni se trunca ni aparece
+    // ninguna otra marca de texto recortado.
+    const titulo = screen.getByTestId('titulo-de-la-ficha');
+    expect(titulo).toHaveTextContent(nombreLargo);
+    expect(titulo.props.numberOfLines).toBeUndefined();
+    expect(titulo.props.ellipsizeMode).toBeUndefined();
+    // Y a la anchura mínima soportada, que es donde el nombre no cabe en una línea.
+    expect(estiloCombinado(screen.getByTestId('ficha-empleado')).minWidth).toBe(
+      ANCHO_MINIMO_SOPORTADO,
+    );
+  });
+
   it('Cambiar el nombre reordena la lista', async () => {
     const datos = await renderizarPanelDeEmpleados({ plantilla: ['Ana', 'Bruno', 'Carmen'] });
 
@@ -77,6 +95,22 @@ describe('Edición de los datos de la ficha', () => {
 
     await abrirLaFichaDe(datos, 'Bruno');
     expect(screen.getByTestId('campo-telefono').props.value).toBe('611 22 33 44');
+  });
+
+  it('Editar el puesto de un empleado existente', async () => {
+    const datos = await renderizarPanelDeEmpleados({
+      plantilla: [],
+      prepararDatos: (almacen) => almacen.altaEmpleado('Bruno', undefined, undefined, 'Cocina'),
+    });
+
+    await abrirLaFichaDe(datos, 'Bruno');
+    expect(screen.getByTestId('campo-puesto').props.value).toBe('Cocina');
+    await rellenar('campo-puesto', 'Jefe de cocina');
+    await tocar('accion-volver-a-la-lista');
+
+    // La lista refleja el puesto nuevo en la fila de Bruno.
+    const bruno = empleadoLlamado(datos, 'Bruno');
+    expect(screen.getByTestId(`puesto-de-la-lista-${bruno.id}`)).toHaveTextContent('Jefe de cocina');
   });
 
   it('Vaciar el email de un empleado', async () => {

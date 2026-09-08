@@ -7,6 +7,11 @@
  * franja entera en repetir dónde estás. Por eso esta fila aplica el margen superior
  * del dispositivo.
  *
+ * El nombre y el logo **vienen con la app y no se editan desde ninguna pantalla**.
+ * Hubo unos ajustes para escribir el nombre; se retiraron el 08/09/2026, porque una
+ * pantalla entera con un solo campo que se toca una vez en la vida es peso muerto en
+ * una app que se maneja de pie y con prisa.
+ *
  * El rango de fechas está siempre visible, y cuando la semana mostrada es la
  * semana en curso se dice de forma explícita, para que el encargado no tenga que
  * contar fechas para saber si está en su semana.
@@ -21,10 +26,16 @@ import { LADO_PULSABLE_MINIMO } from './medidas';
 import { CIFRAS_TABULARES, colores, pesos, tipografia } from './tema';
 
 export const TEXTO_SEMANA_EN_CURSO = 'Semana en curso';
-export const INVITACION_A_ESCRIBIR_EL_NOMBRE = 'Escribe el nombre de tu local';
-export const ACCION_AJUSTES = 'Ajustes';
 
-/** El logo viene con la app: no se elige desde la interfaz ni se pide la galería. */
+/**
+ * La identidad del local: viene con la app, no se elige desde la interfaz y no se
+ * pide la galería del dispositivo.
+ *
+ * El nombre está aquí, pegado a la referencia del logo, y no en un fichero aparte:
+ * los dos son el mismo tipo de dato —identidad fija empaquetada con la app— y así
+ * nadie cambia el logo dejándose el nombre a dos ficheros de distancia.
+ */
+export const NOMBRE_DEL_LOCAL = 'La Esquina café';
 const LOGO_DEL_LOCAL = require('../../assets/logo-del-local.png');
 
 /** Lado del logo, en puntos. No crece con la letra del sistema: es una imagen. */
@@ -33,33 +44,29 @@ const LADO_DEL_LOGO = 32;
 interface Props {
   readonly semana: Semana;
   readonly esLaSemanaEnCurso: boolean;
-  /** Nombre del local, o cadena vacía si el encargado no lo ha escrito todavía. */
-  readonly nombreDelLocal: string;
   readonly onSemanaAnterior: () => void;
   readonly onSemanaSiguiente: () => void;
   readonly onVolverALaSemanaEnCurso: () => void;
   readonly onIrAEmpleados: () => void;
-  readonly onIrAAjustes: () => void;
 }
 
 export function CabeceraSemana({
   semana,
   esLaSemanaEnCurso,
-  nombreDelLocal,
   onSemanaAnterior,
   onSemanaSiguiente,
   onVolverALaSemanaEnCurso,
   onIrAEmpleados,
-  onIrAAjustes,
 }: Props) {
   const { top } = useSafeAreaInsets();
 
   return (
     <View style={[estilos.cabecera, { paddingTop: 6 + top }]}>
       {/*
-        La identidad del local. Cuando todavía no hay nombre, la invitación ocupa su
-        sitio y hace ella misma de acceso a los ajustes: dos botones seguidos al
-        mismo sitio no ayudan a nadie.
+        La identidad del local: el logo y el nombre, siempre los mismos y siempre
+        ahí. No hay caso de "nombre todavía vacío" ni acceso a ninguna pantalla que
+        los cambie, así que la fila mide siempre lo mismo y no le quita sitio a la
+        rejilla.
       */}
       <View testID="identidad-del-local" style={estilos.identidad}>
         <Image
@@ -70,37 +77,14 @@ export function CabeceraSemana({
           accessibilityIgnoresInvertColors
         />
 
-        {nombreDelLocal ? (
-          <>
-            <Text
-              testID="nombre-del-local"
-              style={estilos.nombreDelLocal}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {nombreDelLocal}
-            </Text>
-            <Pressable
-              testID="accion-ir-a-ajustes"
-              accessibilityRole="button"
-              accessibilityLabel="Ajustes del local"
-              onPress={onIrAAjustes}
-              style={estilos.boton}
-            >
-              <Text style={estilos.textoBoton}>{ACCION_AJUSTES}</Text>
-            </Pressable>
-          </>
-        ) : (
-          <Pressable
-            testID="accion-escribir-el-nombre-del-local"
-            accessibilityRole="button"
-            accessibilityLabel={INVITACION_A_ESCRIBIR_EL_NOMBRE}
-            onPress={onIrAAjustes}
-            style={[estilos.boton, estilos.invitacion]}
-          >
-            <Text style={estilos.textoBoton}>{INVITACION_A_ESCRIBIR_EL_NOMBRE}</Text>
-          </Pressable>
-        )}
+        <Text
+          testID="nombre-del-local"
+          style={estilos.nombreDelLocal}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {NOMBRE_DEL_LOCAL}
+        </Text>
       </View>
 
       {/*
@@ -194,9 +178,6 @@ const estilos = StyleSheet.create({
     fontSize: tipografia.titulo,
     fontWeight: pesos.bold,
     color: colores.texto,
-  },
-  invitacion: {
-    flex: 1,
   },
   filaSuperior: {
     flexDirection: 'row',

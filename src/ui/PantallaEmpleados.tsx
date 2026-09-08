@@ -1,10 +1,16 @@
 /**
  * Panel de empleados: la lista de la plantilla.
  *
- * Cada fila muestra **solo el nombre**. Ni teléfono, ni email, ni nota, ni ninguna
- * indicación de vacaciones: por privacidad —una lista de 20 filas con teléfonos
- * queda expuesta a cualquiera que mire el móvil de reojo— y porque una fila de una
- * sola línea mantiene el área pulsable grande con la plantilla entera en pantalla.
+ * Cada fila muestra **el nombre y el puesto**. Ni teléfono, ni email, ni nota, ni
+ * motivo de la ausencia, ni ninguna indicación de vacaciones: por privacidad —una
+ * lista de 20 filas con teléfonos queda expuesta a cualquiera que mire el móvil de
+ * reojo— y porque una fila de una sola línea mantiene el área pulsable grande con la
+ * plantilla entera en pantalla. El puesto queda fuera de esa restricción: describe la
+ * función de una persona dentro del local y no permite localizarla fuera de él, y es
+ * justo lo que el encargado necesita saber de un vistazo al planificar.
+ *
+ * Al repartir el ancho manda el nombre: cuando los dos no caben, el que se trunca es
+ * el puesto. El nombre identifica a la persona; el puesto solo la describe.
  *
  * El orden es el mismo que el de las filas del cuadrante, alfabético del español:
  * el encargado busca aquí lo que ya sabe buscar en la rejilla.
@@ -29,6 +35,19 @@ export const MENSAJE_PLANTILLA_VACIA = 'Todavía no hay empleados en la plantill
 export const ACCION_ALTA_PRIMER_EMPLEADO = 'Dar de alta al primer empleado';
 export const ACCION_ALTA = 'Dar de alta a un empleado';
 
+/**
+ * El acceso visible a la ficha, al final de cada fila.
+ *
+ * Un carácter y no un icono de librería: `@expo/vector-icons` no está instalado y
+ * traerlo por un solo glifo añade peso y una fuente que cargar en el arranque. Como
+ * texto, se le aplican la paleta y los pesos del tema igual que a cualquier otro, y
+ * escala con la letra del sistema.
+ *
+ * No sustituye a la fila pulsable: si abrir una ficha exigiera acertar en él, el
+ * área pulsable bajaría de toda la fila a un cuadrado de 44 puntos en la esquina.
+ */
+export const GLIFO_EDITAR = '✎';
+
 interface Props {
   readonly onAbrirFicha: (id: IdEmpleado) => void;
   readonly onVolver?: () => void;
@@ -45,8 +64,8 @@ export function PantallaEmpleados({ onAbrirFicha, onVolver }: Props) {
   // copia propia. `listarEmpleados` ya la devuelve en orden alfabético español.
   const empleados = datos.listarEmpleados();
 
-  function darDeAlta(nombre: string, telefono: string, email: string) {
-    datos.altaEmpleado(nombre, telefono, email);
+  function darDeAlta(nombre: string, telefono: string, email: string, puesto: string) {
+    datos.altaEmpleado(nombre, telefono, email, puesto);
     setDandoDeAlta(false);
   }
 
@@ -88,6 +107,32 @@ export function PantallaEmpleados({ onAbrirFicha, onVolver }: Props) {
               >
                 {empleado.nombre}
               </Text>
+
+              {/* Quien no tiene puesto escrito no deja hueco ni texto de relleno:
+                  su fila muestra el nombre a secas, con el mismo alto que las demás. */}
+              {empleado.puesto ? (
+                <Text
+                  testID={`puesto-de-la-lista-${empleado.id}`}
+                  style={estilos.puesto}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {empleado.puesto}
+                </Text>
+              ) : null}
+
+              {/* El acceso visible a la ficha, al final de la fila. Tiene su propia
+                  área pulsable de 44 × 44 puntos y no le quita la suya a la fila:
+                  los dos caminos llevan al mismo sitio. */}
+              <Pressable
+                testID={`acceso-a-la-ficha-${empleado.id}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Editar la ficha de ${empleado.nombre}`}
+                onPress={() => onAbrirFicha(empleado.id)}
+                style={estilos.accesoALaFicha}
+              >
+                <Text style={estilos.glifoEditar}>{GLIFO_EDITAR}</Text>
+              </Pressable>
             </Pressable>
           ))}
         </ScrollView>
@@ -144,7 +189,9 @@ const estilos = StyleSheet.create({
     // que al tocar una fila se abre su ficha y no la de la de al lado.
     minHeight: LADO_PULSABLE_MINIMO,
     width: '100%',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: colores.lineaRejilla,
@@ -152,9 +199,36 @@ const estilos = StyleSheet.create({
   nombre: {
     // Mismo color y mismo peso que el nombre en la rejilla del cuadrante; aquí
     // va al cuerpo de la app porque es el contenido de una fila que se toca.
+    //
+    // El nombre cede ancho ocho veces más despacio que el puesto: cuando los dos no
+    // caben, el que se trunca es el puesto, y el nombre solo empieza a recortarse
+    // cuando al puesto ya no le queda nada que ceder. Aun así cede algo, porque el
+    // acceso a la ficha tiene que seguir cabiendo en la fila.
     fontSize: tipografia.cuerpo,
     fontWeight: pesos.medium,
     color: colores.texto,
+    flexShrink: 1,
+  },
+  puesto: {
+    // Es el primero en encogerse. Va en el tono secundario porque describe la
+    // función de la persona, no la identifica.
+    flexShrink: 8,
+    fontSize: tipografia.cuerpo,
+    color: colores.textoSecundario,
+  },
+  accesoALaFicha: {
+    // Su propia área pulsable, sin robarle la suya a la fila. `marginLeft: auto`
+    // lo empuja al final de la fila tenga o no puesto el empleado.
+    minWidth: LADO_PULSABLE_MINIMO,
+    minHeight: LADO_PULSABLE_MINIMO,
+    marginLeft: 'auto',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glifoEditar: {
+    fontSize: tipografia.titulo,
+    color: colores.accion,
   },
   plantillaVacia: {
     flex: 1,

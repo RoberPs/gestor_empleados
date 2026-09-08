@@ -15,13 +15,23 @@ export interface AlmacenEmpleados {
   listarEmpleados(): Empleado[];
   /** La ficha de un empleado, o `null` si ya no está en la plantilla. */
   leerEmpleado(id: IdEmpleado): Empleado | null;
-  /** Devuelve `null` sin tocar la plantilla si el nombre está vacío o repetido. */
-  altaEmpleado(nombre: string, telefono?: string, email?: string): Empleado | null;
+  /**
+   * Devuelve `null` sin tocar la plantilla si el nombre está vacío o repetido.
+   *
+   * El puesto va el último y no en el orden en que lo pide el alta —nombre, puesto,
+   * teléfono, email— para no reescribir todas las llamadas que ya existen por añadir
+   * un campo opcional más. El puesto **no interviene** en la unicidad: dos empleados
+   * pueden compartirlo, pero no el nombre.
+   */
+  altaEmpleado(nombre: string, telefono?: string, email?: string, puesto?: string): Empleado | null;
   /** Devuelve `false` sin guardar si el nombre queda vacío o repetido. */
   editarNombre(id: IdEmpleado, nombre: string): boolean;
+  editarPuesto(id: IdEmpleado, puesto: string): void;
   editarTelefono(id: IdEmpleado, telefono: string): void;
   editarEmail(id: IdEmpleado, email: string): void;
   editarNota(id: IdEmpleado, nota: string): void;
+  /** Un motivo por empleado: el que se escriba pisa al que hubiera. */
+  editarMotivoAusencia(id: IdEmpleado, motivo: string): void;
   borrarEmpleado(id: IdEmpleado): void;
   /** Avisa de cualquier escritura aceptada. Una rechazada no avisa a nadie. */
   suscribirse(oyente: () => void): () => void;

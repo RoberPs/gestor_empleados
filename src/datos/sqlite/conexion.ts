@@ -5,9 +5,10 @@
  * usa por omisión. Sin cifrado propio: la protección es la del almacenamiento
  * privado de la aplicación más el desbloqueo del móvil (design.md — D9).
  *
- * El nombre del fichero es deliberadamente neutro: el nombre comercial de la app, el
- * del local y el del responsable son datos que el encargado edita desde la propia
- * app, así que ninguno de los tres puede quedar fijado en código.
+ * El nombre del fichero es deliberadamente neutro. El del local sí quedó fijado en
+ * el código el 08/09/2026, pero aquí no pinta nada: el nombre comercial de la app y
+ * el del responsable siguen sin fijarse, y un fichero que aludiera a cualquiera de
+ * los tres habría que renombrarlo —con migración de por medio— el día que cambien.
  */
 
 import type { AbrirFichero, BaseDeDatos } from './bd';

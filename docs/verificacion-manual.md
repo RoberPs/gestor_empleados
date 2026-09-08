@@ -260,12 +260,13 @@ distinguen dos celdas de un vistazo.
 - **Requisito**: La plantilla completa es alcanzable y legible en el panel
 - **Cómo se comprueba**: dar de alta a un empleado solo con su nombre y abrir su
   ficha, sin añadirle ningún rango de vacaciones ni escribirle nota.
-- **Qué se debe observar**: el nombre, el teléfono y el email se muestran y se puede
-  escribir en los tres; la zona de vacaciones dice que no hay ninguno y ofrece la
-  acción de añadir un rango; el campo de nota se ve vacío y admite escritura. No
-  aparece ningún mensaje de error ni ninguna zona en blanco sin explicación. El test
-  automatizado comprueba que los cinco campos están presentes; lo que queda para el
-  ojo es que la ficha vacía se lea como una ficha vacía y no como una pantalla rota.
+- **Qué se debe observar**: el nombre, el puesto, el teléfono y el email se muestran y
+  se puede escribir en los cuatro; la zona de vacaciones dice que no hay ninguno y
+  ofrece la acción de añadir un rango; los campos de nota y de motivo de la ausencia
+  se ven vacíos y admiten escritura. No aparece ningún mensaje de error ni ninguna
+  zona en blanco sin explicación. El test automatizado comprueba que todos los campos
+  están presentes; lo que queda para el ojo es que la ficha vacía se lea como una
+  ficha vacía y no como una pantalla rota.
 - **Última comprobación**: pendiente.
 
 ## Escenarios de la identidad del local
@@ -275,33 +276,44 @@ una línea, que el logo no crece con la letra del sistema—. Lo que se anota aq
 la parte que solo se resuelve mirando: si la cabecera se lee como la cabecera de un
 negocio y no como un adorno que le quita sitio al cuadrante.
 
+> El 08/09/2026 se retiró la pantalla de ajustes y el nombre del local pasó a estar
+> fijado en el código, junto al logo. Con ella desaparecieron los escenarios que
+> hablaban de escribirlo, corregirlo o verlo todavía vacío, y el escenario de un
+> nombre muy largo, que ya no puede darse. Los que siguen aquí son los que quedan, y
+> pertenecen ahora a `cuadrante-semanal`, que es la capability de la pantalla donde
+> se dibuja esa cabecera.
+
 ### Abrir la app con el nombre del local ya escrito
 
-- **Capability**: ajustes-del-local
+- **Capability**: cuadrante-semanal
 - **Requisito**: La pantalla de inicio identifica el local
-- **Cómo se comprueba**: con el nombre ya escrito y 20 empleados dados de alta,
-  abrir la app en el móvil en vertical.
+- **Cómo se comprueba**: con 20 empleados dados de alta, abrir la app en el móvil en
+  vertical.
 - **Qué se debe observar**: el logo se ve nítido y redondo, sin restos del fondo
-  gris de la foto original; el nombre se lee entero junto a él; y debajo caben el
-  rango de la semana, la navegación y la rejilla, con **al menos tantas filas de
-  empleado visibles como antes del cambio**. Si la cabecera ha empujado la rejilla
-  hacia abajo, el cambio no vale.
+  gris de la foto original; el nombre `La Esquina café` se lee entero junto a él; y
+  debajo caben el rango de la semana, la navegación y la rejilla, con **al menos
+  tantas filas de empleado visibles como antes del cambio**. Si la cabecera ha
+  empujado la rejilla hacia abajo, el cambio no vale.
 - **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
-  **correcto**. El nombre se escribió desde los ajustes, quedó guardado y la cabecera
-  lo muestra junto al logo, que se ve redondo y sin restos del fondo de la foto. No
-  se contó fila a fila si se ven tantas como antes del cambio, pero la rejilla no da
-  sensación de haber perdido sitio.
+  **correcto**. La cabecera muestra el nombre junto al logo, que se ve redondo y sin
+  restos del fondo de la foto. No se contó fila a fila si se ven tantas como antes
+  del cambio, pero la rejilla no da sensación de haber perdido sitio. Comprobado
+  entonces con el nombre escrito desde los ajustes; desde que el nombre viene fijo
+  con la app, lo que se ve en pantalla es exactamente lo mismo.
 
-### Un nombre de local muy largo no descoloca la rejilla
+### La identidad del local no le quita sitio a la rejilla
 
-- **Capability**: ajustes-del-local
+- **Capability**: cuadrante-semanal
 - **Requisito**: La pantalla de inicio identifica el local
-- **Cómo se comprueba**: escribir en los ajustes un nombre largo —«Cafetería
-  Restaurante Los 24 Hermanos de la Ribera del Duero»— y volver al cuadrante, en
-  una pantalla de 360 puntos de ancho.
-- **Qué se debe observar**: el nombre se corta con puntos suspensivos en una sola
-  línea, la fila de identidad conserva su alto, el acceso a los ajustes sigue
-  visible y pulsable, y las siete columnas siguen sin scroll horizontal.
+- **Cómo se comprueba**: con 20 empleados dados de alta, abrir la app en una pantalla
+  de 360 puntos de ancho en vertical y contar las filas de empleado que se ven sin
+  desplazarse. Intentar arrastrar la rejilla hacia los lados.
+- **Qué se debe observar**: las siete columnas de día se ven a la vez y la rejilla no
+  se mueve horizontalmente. Se ven tantas filas de empleado como se veían antes de
+  existir la cabecera de identidad: la fila del logo y el nombre no se ha llevado
+  ninguna. El test automatizado ya comprueba que las siete columnas y las 20 filas
+  están montadas; lo que queda para el ojo es cuántas de esas filas caben de verdad
+  en la pantalla.
 - **Última comprobación**: pendiente.
 
 ### El nombre del local y la semana no se confunden
@@ -314,6 +326,112 @@ negocio y no como un adorno que le quita sitio al cuadrante.
   semana se está mirando—, no un único bloque de título. El nombre va arriba, junto
   al logo; el rango, centrado y debajo.
 - **Última comprobación**: pendiente.
+
+## La migración a la versión 3 en el dispositivo
+
+Es la primera migración de este proyecto que **borra** algo, y corrió sobre el único
+móvil donde están los datos reales del encargado. No tiene vuelta atrás: el mecanismo
+solo avanza. Por eso se comprobó en el dispositivo antes de dar el change por
+cerrado, y por eso queda anotado aquí aunque no sea el escenario de ninguna spec.
+
+### El salto de la versión 2 a la 3 no se llevó nada por delante
+
+- **Capability**: almacenamiento-empleados
+- **Requisito**: cubre en el dispositivo lo que el test de `migraciones.test.ts`
+  comprueba contra `node:sqlite`: que la adaptación conserve la plantilla, las fichas
+  y el cuadrante, y retire únicamente lo que la app ha dejado de usar.
+- **Cómo se comprueba**: con la app ya instalada y datos reales en la versión 2 del
+  esquema, recargarla y recorrer la plantilla y el cuadrante, incluidas semanas
+  anteriores con turnos, ausencias y vacaciones.
+- **Qué se debe observar**: no falta ningún empleado ni ninguna ficha; el cuadrante
+  conserva todo su contenido; no aparece ningún aviso ni se pide nada al encargado; y
+  el nombre del local se sigue viendo en la cabecera, ahora desde el código.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
+  **correcto**. La plantilla y el cuadrante siguen enteros tras la migración.
+
+### Abrir la ficha desde el nombre de la fila no se dispara al deslizar
+
+- **Capability**: cuadrante-semanal
+- **Requisito**: Rejilla de empleados por días
+- **Cómo se comprueba**: recorrer la rejilla de arriba abajo deslizando con el pulgar
+  sobre la columna de nombres, varias veces, y después tocar un nombre a propósito.
+- **Qué se debe observar**: el desplazamiento no abre ninguna ficha; solo el toque
+  intencionado lo hace. Al volver, el cuadrante sigue en la misma semana.
+- **Por qué está aquí**: es el riesgo que `design.md` — Risks dejó abierto. El nombre
+  pasó a ser pulsable pegado a siete celdas que también lo son, y si el gesto de
+  desplazar sacara al encargado de la rejilla habría que replantearlo. El test
+  comprueba que el toque abre la ficha, no que el deslizamiento no la abra.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
+  **correcto**. El nombre abre la ficha al tocarlo y no se dispara al deslizar la
+  rejilla, así que el riesgo previsto no se ha materializado.
+
+## Escenarios del puesto y del teclado
+
+Los cuatro tienen test automatizado de lo que se puede leer en el código —qué ancho
+cede cada texto, qué hueco declara el contenido del scroll—. Lo que queda para el ojo
+es lo que ningún test alcanza: si el nombre se sigue leyendo, y si el campo se ve de
+verdad por encima del teclado.
+
+### El puesto se trunca antes que el nombre
+
+- **Capability**: panel-empleados
+- **Requisito**: Lista de empleados del panel
+- **Cómo se comprueba**: dar de alta a `Maricarmen de la Fuente Etxebarria` con el
+  puesto `Responsable de sala y barra` y abrir el panel de empleados en un
+  dispositivo de 360 puntos de ancho en orientación vertical.
+- **Qué se debe observar**: el nombre se lee entero, o recortado lo mínimo
+  imprescindible para saber de quién es la fila; el que aparece con puntos
+  suspensivos es el puesto. El icono `✎` del final de la fila sigue viéndose entero y
+  se toca sin esfuerzo con el pulgar. La fila conserva su alto: no se parte en dos
+  líneas ni se estira.
+- **Por qué está aquí**: el test comprueba que el puesto cede ancho antes que el
+  nombre —lo declaran sus `flexShrink`—, no cuántos caracteres sobreviven de cada uno
+  en una pantalla real. Eso solo se ve mirando.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
+  **correcto**. La lista muestra el nombre y el puesto sin que el puesto se coma el
+  nombre, y el icono `✎` del final de la fila sigue visible y se toca sin esfuerzo.
+
+### Escribir en la nota con el teclado abierto
+
+- **Capability**: panel-empleados
+- **Requisito**: El teclado no tapa el campo que se está escribiendo
+- **Cómo se comprueba**: en el móvil, abrir la ficha de un empleado, tocar el campo
+  de la nota y escribir cuatro o cinco líneas seguidas sin cerrar el teclado.
+- **Qué se debe observar**: al tocar el campo, la ficha se desplaza sola hasta él y
+  la nota queda por encima del teclado. Lo que se teclea se ve **mientras** se
+  teclea, línea a línea, sin tener que cerrar el teclado para comprobarlo. El campo
+  no queda ni parcialmente tapado.
+- **Por qué está aquí**: el test comprueba que el contenido reserva el alto del
+  teclado, no que el campo quede efectivamente por encima de él. Con edge-to-edge
+  eso depende del dispositivo, y era justo el defecto que se vio el 08/09/2026.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
+  **correcto**. El teclado ya no tapa la nota: se ve lo que se teclea mientras se
+  teclea. El defecto que se vio esa misma mañana queda resuelto.
+
+### Escribir en el motivo de la ausencia con el teclado abierto
+
+- **Capability**: panel-empleados
+- **Requisito**: El teclado no tapa el campo que se está escribiendo
+- **Cómo se comprueba**: lo mismo que el anterior, pero con el campo del motivo de la
+  ausencia, que es el último de la ficha y por tanto el que más abajo queda.
+- **Qué se debe observar**: al tocarlo, la ficha se desplaza hasta él y el campo se ve
+  entero por encima del teclado mientras se escribe.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
+  **correcto**. El campo del motivo, que es el último de la ficha, se ve entero por
+  encima del teclado.
+
+### Al cerrar el teclado la ficha recupera su sitio
+
+- **Capability**: panel-empleados
+- **Requisito**: El teclado no tapa el campo que se está escribiendo
+- **Cómo se comprueba**: tras escribir en la nota, cerrar el teclado con el gesto de
+  volver del móvil y recorrer la ficha hasta el final.
+- **Qué se debe observar**: la ficha vuelve a verse como antes de abrir el teclado.
+  Al llegar abajo del todo, la acción de dar de baja es lo último que hay: no queda
+  una franja en blanco del alto del teclado por debajo de ella.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
+  **correcto**. Al cerrar el teclado la ficha recupera su sitio y no queda franja en
+  blanco al final.
 
 ## Escenarios de la identidad visual
 

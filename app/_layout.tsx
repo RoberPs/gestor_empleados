@@ -20,7 +20,6 @@ export default function DisposicionRaiz() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="empleados" options={{ title: 'Empleados' }} />
           <Stack.Screen name="empleados/[id]" options={{ title: 'Ficha del empleado' }} />
-          <Stack.Screen name="ajustes" options={{ title: 'Ajustes' }} />
         </Stack>
       </ArranqueDeLaApp>
     </SafeAreaProvider>

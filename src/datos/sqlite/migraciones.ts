@@ -94,8 +94,45 @@ const CREAR_AJUSTES: Migracion = {
   },
 };
 
+/**
+ * Versión 3: la ficha gana el puesto y el motivo de la ausencia, y los ajustes se van.
+ *
+ * Las tres cosas en una sola migración y no en tres: el mecanismo aplica una
+ * transacción por número de versión, así que tres versiones son tres oportunidades
+ * de quedarse a medias en un móvil que se apaga a mitad del arranque. Con una sola,
+ * el salto es todo o nada (design.md — "La migración 3 hace las tres cosas de golpe").
+ *
+ * `ALTER TABLE ADD COLUMN` y no una tabla nueva a la que copiar: SQLite añade la
+ * columna sin reescribir la tabla, de modo que la plantilla ni se copia ni se toca y
+ * el índice único sobre `nombre_comparable` sigue en pie sin recrearse. Copiar a una
+ * tabla nueva —lo que SQLite obliga a hacer para *quitar* una columna— es justo el
+ * patrón que puede perder filas, y aquí no hace falta.
+ *
+ * `DEFAULT ''` y no `NULL`: los dos campos son opcionales y se pueden vaciar, y así
+ * las fichas que ya existían quedan con los dos campos vacíos, que es lo que la
+ * pantalla muestra para quien no los tiene escritos.
+ *
+ * **Esta es la primera migración del proyecto que borra algo.** `ajustes` guardaba el
+ * nombre del local, que pasa a estar fijado en el código junto al logo: no se pierde
+ * ningún dato que el encargado siga viendo en pantalla. Dejar la tabla muerta se
+ * descartó — una tabla con el nombre del local dentro, mientras el nombre vive en el
+ * código, es una trampa para quien lea esto dentro de seis meses.
+ */
+const AMPLIAR_FICHA_Y_RETIRAR_AJUSTES: Migracion = {
+  descripcion: 'Añade el puesto y el motivo de la ausencia a la ficha, y retira los ajustes',
+  aplicar(bd) {
+    bd.ejecutar("ALTER TABLE empleados ADD COLUMN puesto TEXT DEFAULT ''");
+    bd.ejecutar("ALTER TABLE empleados ADD COLUMN motivo_ausencia TEXT DEFAULT ''");
+    bd.ejecutar('DROP TABLE ajustes');
+  },
+};
+
 /** En orden. Nunca se reordena, nunca se quita ninguna: solo se añade al final. */
-export const MIGRACIONES: readonly Migracion[] = [CREAR_PLANTILLA, CREAR_AJUSTES];
+export const MIGRACIONES: readonly Migracion[] = [
+  CREAR_PLANTILLA,
+  CREAR_AJUSTES,
+  AMPLIAR_FICHA_Y_RETIRAR_AJUSTES,
+];
 
 /** La versión de esquema que esta versión de la app sabe leer. */
 export const VERSION_DEL_ESQUEMA = MIGRACIONES.length;

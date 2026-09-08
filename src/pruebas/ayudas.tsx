@@ -4,7 +4,7 @@
 
 import { act, render } from '@testing-library/react-native';
 import { useState, type ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { AppState, View } from 'react-native';
 import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import {
@@ -64,10 +64,8 @@ interface Opciones {
   readonly prepararDatos?: (datos: AlmacenCuadrante) => void;
   /** Márgenes del dispositivo (muesca, barra de navegación). Por defecto, ninguno. */
   readonly areaSegura?: Metrics;
-  /** Nombre del local. Por defecto, ninguno: como en un dispositivo recién estrenado. */
-  readonly nombreDelLocal?: string;
-  /** Navegación a los ajustes del local. */
-  readonly onIrAAjustes?: () => void;
+  /** Navegación a la ficha de un empleado desde el cuadrante. */
+  readonly onAbrirFicha?: (id: IdEmpleado) => void;
 }
 
 export interface CuadranteRenderizado {
@@ -83,12 +81,10 @@ export async function renderizarCuadrante(opciones: Opciones = {}): Promise<Cuad
     onIrAEmpleados,
     prepararDatos,
     areaSegura,
-    nombreDelLocal,
-    onIrAAjustes,
+    onAbrirFicha,
   } = opciones;
 
   const datos = crearAlmacenEnMemoria(plantilla);
-  if (nombreDelLocal) datos.escribirNombreDelLocal(nombreDelLocal);
   prepararDatos?.(datos);
   instalarAlmacen(datos);
 
@@ -98,7 +94,7 @@ export async function renderizarCuadrante(opciones: Opciones = {}): Promise<Cuad
         reloj={reloj}
         anchoDePantalla={anchoDePantalla}
         onIrAEmpleados={onIrAEmpleados}
-        onIrAAjustes={onIrAAjustes}
+        onAbrirFicha={onAbrirFicha}
       />
     </ConAreaSegura>,
   );
@@ -148,6 +144,61 @@ export async function renderizarPanelDeEmpleados(
   await render(
     <ConAreaSegura metricas={areaSegura}>
       <PanelDeEmpleados />
+    </ConAreaSegura>,
+  );
+  return datos;
+}
+
+/**
+ * El cuadrante con la ficha que se abre desde él: desde el nombre de una fila o
+ * desde la acción «Ver la ausencia» de una celda.
+ *
+ * La ficha se abre **encima** del cuadrante, sin desmontarlo, igual que hace la pila
+ * de expo-router: por eso al volver el cuadrante sigue en la semana en la que
+ * estaba. Desmontándolo, la semana se perdería en el test y no en la app.
+ */
+export function CuadranteConFicha({
+  reloj = () => MIERCOLES_A_LAS_DIEZ,
+  anchoDePantalla = ANCHO_MINIMO_SOPORTADO,
+}: {
+  readonly reloj?: () => Date;
+  readonly anchoDePantalla?: number;
+} = {}) {
+  const [abierta, setAbierta] = useState<IdEmpleado | null>(null);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, display: abierta === null ? 'flex' : 'none' }}>
+        <PantallaCuadrante
+          reloj={reloj}
+          anchoDePantalla={anchoDePantalla}
+          onAbrirFicha={setAbierta}
+        />
+      </View>
+      {abierta === null ? null : (
+        <PantallaFichaEmpleado
+          idEmpleado={abierta}
+          seAbrioDesde="cuadrante"
+          onVolver={() => setAbierta(null)}
+        />
+      )}
+    </View>
+  );
+}
+
+/** Renderiza el cuadrante con su ficha sobre un almacén recién creado. */
+export async function renderizarCuadranteConFicha(
+  opciones: OpcionesDelPanel = {},
+): Promise<AlmacenCuadrante> {
+  const { plantilla = ['Ana', 'Bruno'], prepararDatos, areaSegura } = opciones;
+
+  const datos = crearAlmacenEnMemoria(plantilla);
+  prepararDatos?.(datos);
+  instalarAlmacen(datos);
+
+  await render(
+    <ConAreaSegura metricas={areaSegura}>
+      <CuadranteConFicha />
     </ConAreaSegura>,
   );
   return datos;

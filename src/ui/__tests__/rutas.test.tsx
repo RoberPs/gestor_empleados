@@ -7,21 +7,22 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import RutaCuadrante from '../../../app/index';
 import RutaEmpleados from '../../../app/empleados';
 import RutaFichaEmpleado from '../../../app/empleados/[id]';
-import RutaAjustes from '../../../app/ajustes';
 import { crearAlmacenEnMemoria, instalarAlmacen } from '../../datos/almacenCuadrante';
 
 const mockEmpujar = jest.fn();
 const mockAtras = jest.fn();
 let mockIdDeLaRuta = '1';
+let mockDesdeDeLaRuta: string | undefined;
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockEmpujar, back: mockAtras }),
-  useLocalSearchParams: () => ({ id: mockIdDeLaRuta }),
+  useLocalSearchParams: () => ({ id: mockIdDeLaRuta, desde: mockDesdeDeLaRuta }),
 }));
 
 beforeEach(() => {
   mockEmpujar.mockClear();
   mockAtras.mockClear();
+  mockDesdeDeLaRuta = undefined;
 });
 
 describe('Rutas de la app', () => {
@@ -78,26 +79,37 @@ describe('Rutas de la app', () => {
     expect(mockAtras).toHaveBeenCalled();
   });
 
-  it('desde el cuadrante se navega a los ajustes del local', async () => {
+  it('desde el nombre de una fila del cuadrante se navega a la ficha, diciendo de dónde se viene', async () => {
+    const datos = crearAlmacenEnMemoria(['Ana', 'Bruno']);
+    instalarAlmacen(datos);
+    const bruno = datos.listarEmpleados().find((e) => e.nombre === 'Bruno')!;
+    await render(<RutaCuadrante />);
+
+    await fireEvent.press(screen.getByTestId(`nombre-empleado-${bruno.id}`));
+
+    expect(mockEmpujar).toHaveBeenCalledWith(`/empleados/${bruno.id}?desde=cuadrante`);
+  });
+
+  it('la ficha abierta desde el cuadrante vuelve al cuadrante, no a la lista', async () => {
+    const datos = crearAlmacenEnMemoria(['Ana', 'Bruno']);
+    instalarAlmacen(datos);
+    mockIdDeLaRuta = datos.listarEmpleados().find((e) => e.nombre === 'Bruno')!.id;
+    mockDesdeDeLaRuta = 'cuadrante';
+
+    await render(<RutaFichaEmpleado />);
+
+    expect(screen.getByLabelText('Volver al cuadrante')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('accion-volver-a-la-lista'));
+    expect(mockAtras).toHaveBeenCalled();
+  });
+
+  it('el cuadrante no lleva a ninguna pantalla de ajustes', async () => {
+    // La ruta se retiró con la pantalla: aquí ya no se monta ninguna, y el cuadrante
+    // no ofrece por dónde ir a ella.
     instalarAlmacen(crearAlmacenEnMemoria(['Ana']));
     await render(<RutaCuadrante />);
 
-    await fireEvent.press(screen.getByTestId('accion-escribir-el-nombre-del-local'));
-
-    expect(mockEmpujar).toHaveBeenCalledWith('/ajustes');
-  });
-
-  it('la ruta de ajustes muestra el nombre del local y permite volver', async () => {
-    const datos = crearAlmacenEnMemoria(['Ana']);
-    datos.escribirNombreDelLocal('La Esquina café');
-    instalarAlmacen(datos);
-
-    await render(<RutaAjustes />);
-
-    expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
-    expect(screen.getByTestId('campo-nombre-del-local').props.value).toBe('La Esquina café');
-
-    await fireEvent.press(screen.getByTestId('accion-volver-al-cuadrante'));
-    expect(mockAtras).toHaveBeenCalled();
+    expect(screen.queryByTestId('accion-ir-a-ajustes')).toBeNull();
+    expect(mockEmpujar).not.toHaveBeenCalledWith('/ajustes');
   });
 });

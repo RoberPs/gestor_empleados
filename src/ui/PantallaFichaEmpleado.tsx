@@ -1,5 +1,6 @@
 /**
- * Ficha de un empleado: nombre, teléfono, email, vacaciones y nota.
+ * Ficha de un empleado: nombre, puesto, teléfono, email, vacaciones, nota y motivo
+ * de la ausencia.
  *
  * Nada es de solo lectura para el encargado, y **cada campo queda guardado según
  * se escribe**: no hay botón de guardar global ni diálogo de "¿descartar
@@ -11,12 +12,24 @@
  * vacío ni repetir el de otro empleado— y, cuando no se puede guardar, se explica
  * por qué y se conserva lo tecleado para corregirlo.
  *
- * El teléfono, el email y la nota no salen de esta pantalla: ni la lista de
- * empleados ni el cuadrante los muestran.
+ * El teléfono, el email, la nota y el motivo de la ausencia no salen de esta
+ * pantalla: ni la lista de empleados ni el cuadrante los muestran. El puesto sí:
+ * describe la función de una persona dentro del local, no permite localizarla fuera
+ * de él, y aparece junto al nombre en la lista del panel.
  */
 
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type NativeSyntheticEvent,
+  type TargetedEvent,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { motivoPorElQueElNombreNoSeGuarda } from '../dominio/empleado';
@@ -29,18 +42,60 @@ import { usarAlmacen } from './usarAlmacen';
 import { VacacionesDeLaFicha } from './VacacionesDeLaFicha';
 
 export const ACCION_BAJA = 'Dar de baja';
+export const ETIQUETA_MOTIVO_AUSENCIA = 'Motivo de la ausencia';
+
+/** Aire que queda entre el campo enfocado y el borde superior del teclado, en puntos. */
+const ALTURA_SOBRE_EL_TECLADO = 24;
+
+/**
+ * Reserva el hueco que ocupa el teclado y lo retira al cerrarse.
+ *
+ * Con edge-to-edge —Expo 57 / RN 0.86 en Android— la ventana ya no se encoge al
+ * abrir el teclado: se pinta por encima. Por eso el `ScrollView`, que está bien
+ * puesto, no basta por sí solo, y por eso tampoco vale `KeyboardAvoidingView`, cuyo
+ * `behavior="height"` depende justo de ese encogimiento que ya no ocurre.
+ *
+ * Reservar el hueco a mano es determinista, funciona igual en las dos plataformas y
+ * no añade ninguna dependencia nativa. Devuelve 0 con el teclado cerrado, de modo
+ * que al cerrarlo no queda ningún hueco en blanco al final del contenido.
+ */
+export function usarAltoDelTeclado(): number {
+  const [alto, setAlto] = useState(0);
+
+  useEffect(() => {
+    const alAbrirse = Keyboard.addListener('keyboardDidShow', (evento) =>
+      setAlto(evento.endCoordinates.height),
+    );
+    const alCerrarse = Keyboard.addListener('keyboardDidHide', () => setAlto(0));
+    return () => {
+      alAbrirse.remove();
+      alCerrarse.remove();
+    };
+  }, []);
+
+  return alto;
+}
 
 /** Lo que se advierte antes de borrar: qué se pierde, y que no vuelve. */
 export function advertenciaDeBaja(nombre: string): string {
   return `¿Dar de baja a ${nombre}? Sus turnos planificados, sus ausencias y sus vacaciones desaparecen del cuadrante, también en las semanas ya pasadas.`;
 }
 
+/** Desde dónde se abrió la ficha, que es a donde devuelve su acción de volver. */
+export type OrigenDeLaFicha = 'lista' | 'cuadrante';
+
+export function etiquetaDeVolver(origen: OrigenDeLaFicha): string {
+  return origen === 'cuadrante' ? 'Volver al cuadrante' : 'Volver a la lista';
+}
+
 interface Props {
   readonly idEmpleado: IdEmpleado;
+  /** Por defecto, la lista del panel: es de donde se abría antes de existir el otro camino. */
+  readonly seAbrioDesde?: OrigenDeLaFicha;
   readonly onVolver: () => void;
 }
 
-export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
+export function PantallaFichaEmpleado({ idEmpleado, seAbrioDesde = 'lista', onVolver }: Props) {
   const datos = usarAlmacen();
   const empleado = datos.leerEmpleado(idEmpleado);
 
@@ -51,6 +106,20 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
   // La ficha termina en la acción de baja: sin este aire queda bajo la barra de
   // navegación del móvil.
   const { bottom } = useSafeAreaInsets();
+  const altoDelTeclado = usarAltoDelTeclado();
+  const scroll = useRef<ScrollView>(null);
+
+  /**
+   * Lleva el scroll hasta el campo que acaba de recibir el foco.
+   *
+   * Reservar el hueco evita que el teclado tape el final del contenido, pero no
+   * mueve por sí solo un campo que ya estaba debajo del teclado cuando se tocó.
+   */
+  function desplazarHastaElCampoEnfocado(evento: NativeSyntheticEvent<TargetedEvent>) {
+    const { target } = evento;
+    if (typeof target !== 'number') return;
+    scroll.current?.scrollResponderScrollNativeHandleToKeyboard?.(target, ALTURA_SOBRE_EL_TECLADO, true);
+  }
 
   /**
    * La ficha de alguien que ya no está en la plantilla no es una pantalla de este
@@ -89,14 +158,17 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
         <Pressable
           testID="accion-volver-a-la-lista"
           accessibilityRole="button"
-          accessibilityLabel="Volver a la lista"
+          accessibilityLabel={etiquetaDeVolver(seAbrioDesde)}
           onPress={onVolver}
           style={estilos.boton}
         >
           <Text style={estilos.textoBoton}>Volver</Text>
         </Pressable>
-        {/* La ficha identifica de quién es con el nombre ya guardado. */}
-        <Text testID="titulo-de-la-ficha" style={estilos.titulo} numberOfLines={1}>
+        {/* La ficha identifica de quién es con el nombre ya guardado, y lo muestra
+            **entero**: un nombre que la rejilla trunca se viene a leer aquí, así que
+            truncarlo también aquí no resolvería nada. Se reparte en las líneas que
+            necesite. */}
+        <Text testID="titulo-de-la-ficha" style={estilos.titulo}>
           {empleado.nombre}
         </Text>
       </View>
@@ -105,7 +177,16 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
           fuera de alcance por muchos rangos de vacaciones que haya. */}
       <ScrollView
         testID="scroll-de-la-ficha"
-        contentContainerStyle={[estilos.contenido, { paddingBottom: 24 + bottom }]}
+        ref={scroll}
+        // El primer toque fuera del campo ejecuta la acción que se ha tocado, en vez
+        // de gastarse en cerrar el teclado y obligar a tocar dos veces.
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          estilos.contenido,
+          // Con el teclado abierto se reserva su alto; al cerrarse vuelve a ser 0 y
+          // no queda ningún hueco en blanco al final del contenido.
+          { paddingBottom: 24 + bottom + altoDelTeclado },
+        ]}
       >
         <Text style={estilos.etiqueta}>Nombre</Text>
         <TextInput
@@ -119,6 +200,7 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
             setMotivoDelNombre(null);
             setNombreGuardado(false);
           }}
+          onFocus={desplazarHastaElCampoEnfocado}
           onEndEditing={terminarDeEditarElNombre}
           onBlur={terminarDeEditarElNombre}
           style={estilos.campo}
@@ -133,12 +215,23 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
           testID="guardado-campo-nombre"
         />
 
+        {/* El puesto se guarda según se escribe y lo dice, igual que el resto. Es el
+            único campo de la ficha que además se muestra en la lista. */}
+        <CampoDeLaFicha
+          testID="campo-puesto"
+          etiqueta="Puesto"
+          valorGuardado={empleado.puesto ?? ''}
+          onGuardar={(texto) => datos.editarPuesto(idEmpleado, texto)}
+          onFocus={desplazarHastaElCampoEnfocado}
+        />
+
         <CampoDeLaFicha
           testID="campo-telefono"
           etiqueta="Teléfono"
           valorGuardado={empleado.telefono ?? ''}
           onGuardar={(texto) => datos.editarTelefono(idEmpleado, texto)}
           keyboardType="phone-pad"
+          onFocus={desplazarHastaElCampoEnfocado}
         />
 
         <CampoDeLaFicha
@@ -147,6 +240,7 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
           valorGuardado={empleado.email ?? ''}
           onGuardar={(texto) => datos.editarEmail(idEmpleado, texto)}
           keyboardType="email-address"
+          onFocus={desplazarHastaElCampoEnfocado}
         />
 
         <VacacionesDeLaFicha idEmpleado={idEmpleado} />
@@ -157,6 +251,21 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
           valorGuardado={empleado.nota ?? ''}
           onGuardar={(texto) => datos.editarNota(idEmpleado, texto)}
           multilinea
+          onFocus={desplazarHastaElCampoEnfocado}
+        />
+
+        {/* El motivo de la ausencia se comporta exactamente como la nota: texto
+            libre, multilínea, sin longitud máxima y guardado según se escribe.
+            Es **uno por empleado**, no uno por día marcado: el motivo nuevo pisa al
+            anterior y no se archiva ninguno. Y es independiente del cuadrante —
+            escribirlo no marca ninguna celda, y marcar una ausencia no lo exige. */}
+        <CampoDeLaFicha
+          testID="campo-motivo-ausencia"
+          etiqueta={ETIQUETA_MOTIVO_AUSENCIA}
+          valorGuardado={empleado.motivoAusencia ?? ''}
+          onGuardar={(texto) => datos.editarMotivoAusencia(idEmpleado, texto)}
+          multilinea
+          onFocus={desplazarHastaElCampoEnfocado}
         />
 
         <Pressable
@@ -203,6 +312,7 @@ function CampoDeLaFicha({
   etiqueta,
   valorGuardado,
   onGuardar,
+  onFocus,
   multilinea = false,
   keyboardType,
 }: {
@@ -210,6 +320,8 @@ function CampoDeLaFicha({
   readonly etiqueta: string;
   readonly valorGuardado: string;
   readonly onGuardar: (texto: string) => void;
+  /** Lleva el scroll hasta este campo, para que el teclado no lo tape. */
+  readonly onFocus?: (evento: NativeSyntheticEvent<TargetedEvent>) => void;
   readonly multilinea?: boolean;
   readonly keyboardType?: 'phone-pad' | 'email-address';
 }) {
@@ -232,6 +344,7 @@ function CampoDeLaFicha({
         accessibilityLabel={etiqueta}
         value={texto}
         onChangeText={escribir}
+        onFocus={onFocus}
         keyboardType={keyboardType}
         autoCapitalize={keyboardType === 'email-address' ? 'none' : 'sentences'}
         // La nota es de texto libre y crece con lo que se escriba: la interfaz no

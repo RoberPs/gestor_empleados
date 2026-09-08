@@ -15,16 +15,29 @@ export type IdTurno = string;
  * Empleado de la plantilla.
  *
  * El nombre es el único campo obligatorio: identifica la fila del cuadrante y se
- * pide en el alta. El teléfono, el email y la nota son opcionales, se rellenan
- * desde la ficha del panel de empleados y **no salen de ella**: el cuadrante no
- * los lee ni los muestra en ninguna de sus pantallas.
+ * pide en el alta. Los demás son opcionales y se rellenan desde la ficha del panel
+ * de empleados.
+ *
+ * El teléfono, el email, la nota y el motivo de la ausencia **no salen de la
+ * ficha**: el cuadrante no los lee ni los muestra en ninguna de sus pantallas, y la
+ * lista del panel tampoco. El puesto es la excepción: describe la función de una
+ * persona dentro del local, no permite localizarla ni identificarla fuera de él, y
+ * por eso sí se muestra junto al nombre en la lista.
+ *
+ * `motivoAusencia` es **uno por empleado**, no uno por día marcado como ausencia:
+ * el caso real es recordar por qué falta alguien estos días, no llevar el historial
+ * de bajas del año. La consecuencia está asumida y es explícita: **un motivo nuevo
+ * pisa al anterior**, no se archiva ninguno, y nada obliga a que el empleado tenga
+ * ausencias marcadas en el cuadrante para tenerlo escrito.
  */
 export interface Empleado {
   readonly id: IdEmpleado;
   readonly nombre: string;
+  readonly puesto?: string;
   readonly telefono?: string;
   readonly email?: string;
   readonly nota?: string;
+  readonly motivoAusencia?: string;
 }
 
 /** Un turno planificado de un día: hora de inicio y hora de fin, en 24h. */

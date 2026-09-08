@@ -42,10 +42,8 @@ import { sanearCampo, sePuedeGuardarElNombre } from '../dominio/empleado';
 import { ordenarEmpleadosPorNombre } from '../dominio/orden';
 import { ordenarPorHoraDeInicio } from '../dominio/turno';
 import { agruparEnRangos, diasDelRango, type RangoDeVacaciones } from '../dominio/vacaciones';
-import { crearAlmacenAjustesEnMemoria, type AlmacenAjustes } from './almacenAjustes';
 import type { AlmacenEmpleados } from './almacenEmpleados';
 import type { BaseDeDatos } from './sqlite/bd';
-import { crearAlmacenAjustesSqlite } from './sqlite/almacenAjustesSqlite';
 import { crearAlmacenEmpleadosSqlite } from './sqlite/almacenEmpleadosSqlite';
 
 /** Contenido de una semana entera: para cada empleado, sus siete días. */
@@ -61,15 +59,19 @@ export interface AlmacenCuadrante {
   /** La ficha de un empleado, o `null` si ya no está en la plantilla. */
   leerEmpleado(id: IdEmpleado): Empleado | null;
   /**
-   * Da de alta un empleado. El teléfono y el email son opcionales.
+   * Da de alta un empleado. El puesto, el teléfono y el email son opcionales.
    * Devuelve `null` sin tocar la plantilla si el nombre está vacío o repetido.
    */
-  altaEmpleado(nombre: string, telefono?: string, email?: string): Empleado | null;
+  altaEmpleado(nombre: string, telefono?: string, email?: string, puesto?: string): Empleado | null;
   /** Cambia el nombre. Devuelve `false` sin guardar si queda vacío o repetido. */
   editarNombre(id: IdEmpleado, nombre: string): boolean;
+  /** Texto libre. No interviene en la unicidad del nombre ni en el orden de la lista. */
+  editarPuesto(id: IdEmpleado, puesto: string): void;
   editarTelefono(id: IdEmpleado, telefono: string): void;
   editarEmail(id: IdEmpleado, email: string): void;
   editarNota(id: IdEmpleado, nota: string): void;
+  /** Un motivo por empleado: el que se escriba pisa al que hubiera. */
+  editarMotivoAusencia(id: IdEmpleado, motivo: string): void;
   /** La baja se lleva al empleado y sus celdas de cualquier semana, también pasadas. */
   borrarEmpleado(id: IdEmpleado): void;
 
@@ -97,11 +99,6 @@ export interface AlmacenCuadrante {
   marcarAusencia(idEmpleado: IdEmpleado, dia: FechaISO): void;
   marcarVacaciones(idEmpleado: IdEmpleado, dia: FechaISO): void;
   vaciarCelda(idEmpleado: IdEmpleado, dia: FechaISO): void;
-
-  /** El nombre del local, o cadena vacía si el encargado no lo ha escrito nunca. */
-  leerNombreDelLocal(): string;
-  /** Guarda el nombre del local, sin los espacios sobrantes. */
-  escribirNombreDelLocal(nombre: string): void;
 
   /** Avisa de cualquier cambio, para que la pantalla se vuelva a pintar. */
   suscribirse(oyente: () => void): () => void;
@@ -149,14 +146,16 @@ export function crearAlmacenEmpleadosEnMemoria(): AlmacenEmpleados {
       return empleados.find((empleado) => empleado.id === id) ?? null;
     },
 
-    altaEmpleado(nombre, telefono, email) {
+    altaEmpleado(nombre, telefono, email, puesto) {
+      // El puesto no entra en la comprobación: dos empleados pueden compartirlo.
       if (!sePuedeGuardarElNombre(nombre, empleados)) return null;
 
-      // Teléfono y email son opcionales: si llegan vacíos, la ficha no guarda el
-      // campo en absoluto en lugar de guardar una cadena vacía.
+      // Puesto, teléfono y email son opcionales: si llegan vacíos, la ficha no
+      // guarda el campo en absoluto en lugar de guardar una cadena vacía.
       const empleado: Empleado = {
         id: String(siguienteId++),
         nombre: sanearCampo(nombre),
+        ...(sanearCampo(puesto ?? '') ? { puesto: sanearCampo(puesto ?? '') } : {}),
         ...(sanearCampo(telefono ?? '') ? { telefono: sanearCampo(telefono ?? '') } : {}),
         ...(sanearCampo(email ?? '') ? { email: sanearCampo(email ?? '') } : {}),
       };
@@ -171,6 +170,10 @@ export function crearAlmacenEmpleadosEnMemoria(): AlmacenEmpleados {
       return true;
     },
 
+    editarPuesto(id, puesto) {
+      cambiarFicha(id, { puesto: sanearCampo(puesto) || undefined });
+    },
+
     editarTelefono(id, telefono) {
       cambiarFicha(id, { telefono: sanearCampo(telefono) || undefined });
     },
@@ -183,6 +186,12 @@ export function crearAlmacenEmpleadosEnMemoria(): AlmacenEmpleados {
       // La nota se guarda entera: ni se recorta ni se le quitan los saltos de
       // línea, solo los espacios de los extremos, igual que el resto de campos.
       cambiarFicha(id, { nota: sanearCampo(nota) || undefined });
+    },
+
+    editarMotivoAusencia(id, motivo) {
+      // Igual que la nota: texto libre, sin longitud máxima, y el motivo nuevo pisa
+      // al anterior porque solo hay uno por empleado.
+      cambiarFicha(id, { motivoAusencia: sanearCampo(motivo) || undefined });
     },
 
     borrarEmpleado(id) {
@@ -203,11 +212,11 @@ export function crearAlmacenEmpleadosEnMemoria(): AlmacenEmpleados {
  * Compone el almacén que consume la pantalla: la plantilla la atiende `empleados`
  * —contra SQLite en la app, en memoria en los tests de pantalla— y las celdas del
  * cuadrante viven en memoria hasta el change de turnos.
+ *
+ * Ya no hay ajustes que componer: el nombre del local dejó de ser un dato guardado
+ * y vive fijo en el código, junto al logo, en `src/ui/CabeceraSemana.tsx`.
  */
-export function crearAlmacenCuadrante(
-  empleados: AlmacenEmpleados,
-  ajustes: AlmacenAjustes = crearAlmacenAjustesEnMemoria(),
-): AlmacenCuadrante {
+export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadrante {
   const celdas = new Map<string, ContenidoCelda>();
   const oyentes = new Set<() => void>();
   let siguienteIdDeTurno = 1;
@@ -255,12 +264,11 @@ export function crearAlmacenCuadrante(
     leerEmpleado: (...argumentos) => empleados.leerEmpleado(...argumentos),
     altaEmpleado: (...argumentos) => empleados.altaEmpleado(...argumentos),
     editarNombre: (...argumentos) => empleados.editarNombre(...argumentos),
+    editarPuesto: (...argumentos) => empleados.editarPuesto(...argumentos),
     editarTelefono: (...argumentos) => empleados.editarTelefono(...argumentos),
     editarEmail: (...argumentos) => empleados.editarEmail(...argumentos),
     editarNota: (...argumentos) => empleados.editarNota(...argumentos),
-
-    leerNombreDelLocal: (...argumentos) => ajustes.leerNombreDelLocal(...argumentos),
-    escribirNombreDelLocal: (...argumentos) => ajustes.escribirNombreDelLocal(...argumentos),
+    editarMotivoAusencia: (...argumentos) => empleados.editarMotivoAusencia(...argumentos),
 
     leerRangosDeVacaciones(id) {
       const dias: FechaISO[] = [];
@@ -352,11 +360,9 @@ export function crearAlmacenCuadrante(
       // almacenes: cambie la plantilla o cambie una celda, se vuelve a pintar.
       oyentes.add(oyente);
       const darseDeBajaDeEmpleados = empleados.suscribirse(oyente);
-      const darseDeBajaDeAjustes = ajustes.suscribirse(oyente);
       return () => {
         oyentes.delete(oyente);
         darseDeBajaDeEmpleados();
-        darseDeBajaDeAjustes();
       };
     },
   };
@@ -376,7 +382,7 @@ export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []):
  * celdas del cuadrante todavía en memoria.
  */
 export function crearAlmacenSobreSqlite(bd: BaseDeDatos): AlmacenCuadrante {
-  return crearAlmacenCuadrante(crearAlmacenEmpleadosSqlite(bd), crearAlmacenAjustesSqlite(bd));
+  return crearAlmacenCuadrante(crearAlmacenEmpleadosSqlite(bd));
 }
 
 /**
@@ -400,12 +406,12 @@ export function crearAlmacenNoDisponible(): AlmacenCuadrante {
     leerEmpleado: rechazar,
     altaEmpleado: rechazar,
     editarNombre: rechazar,
+    editarPuesto: rechazar,
     editarTelefono: rechazar,
     editarEmail: rechazar,
     editarNota: rechazar,
+    editarMotivoAusencia: rechazar,
     borrarEmpleado: rechazar,
-    leerNombreDelLocal: rechazar,
-    escribirNombreDelLocal: rechazar,
     leerRangosDeVacaciones: rechazar,
     contarDiasConContenido: rechazar,
     marcarRangoDeVacaciones: rechazar,

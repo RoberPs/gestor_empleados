@@ -17,6 +17,7 @@ export type AccionCelda =
   | { readonly tipo: 'eliminar-turno'; readonly turno: TurnoPlanificado }
   | { readonly tipo: 'marcar-ausencia' }
   | { readonly tipo: 'marcar-vacaciones' }
+  | { readonly tipo: 'ver-ausencia' }
   | { readonly tipo: 'eliminar-contenido' };
 
 /** Acciones disponibles para cada uno de los cuatro estados de la celda. */
@@ -49,7 +50,11 @@ export function accionesPara(contenido: ContenidoCelda): AccionCelda[] {
     }
 
     case 'ausencia':
+      // Ver la ausencia lleva a la ficha, que es donde vive el motivo. Se ofrece
+      // tenga o no tenga motivo escrito ese empleado: la celda no sabe nada de él,
+      // y una acción que aparece y desaparece se busca dos veces.
       return [
+        { tipo: 'ver-ausencia' },
         { tipo: 'marcar-vacaciones' },
         { tipo: 'crear-turno' },
         { tipo: 'eliminar-contenido' },
@@ -81,6 +86,8 @@ export function etiquetaDeAccion(accion: AccionCelda, contenido: ContenidoCelda)
       if (contenido.tipo === 'vacia') return 'Marcar vacaciones';
       if (contenido.tipo === 'ausencia') return 'Cambiar a vacaciones';
       return 'Sustituir por vacaciones';
+    case 'ver-ausencia':
+      return 'Ver la ausencia';
     case 'eliminar-contenido':
       return contenido.tipo === 'ausencia' ? 'Eliminar la ausencia' : 'Eliminar las vacaciones';
   }

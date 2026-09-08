@@ -1,65 +1,26 @@
 /**
- * La identidad del local en el cuadrante y los ajustes donde se escribe su nombre.
- */
-
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { useState } from 'react';
-import { View } from 'react-native';
-
-import { crearAlmacenEnMemoria, instalarAlmacen } from '../../datos/almacenCuadrante';
-import {
-  ConAreaSegura,
-  estiloCombinado,
-  MIERCOLES_A_LAS_DIEZ,
-  renderizarCuadrante,
-} from '../../pruebas/ayudas';
-import { ANCHO_MINIMO_SOPORTADO } from '../medidas';
-import { INVITACION_A_ESCRIBIR_EL_NOMBRE } from '../CabeceraSemana';
-import { PantallaAjustes } from '../PantallaAjustes';
-import { PantallaCuadrante } from '../PantallaCuadrante';
-import { TEXTO_GUARDADO } from '../AvisoDeGuardado';
-
-/**
- * El cuadrante y sus ajustes con la navegación entre los dos, que es lo que hacen
- * las rutas de expo-router sin expo-router de por medio.
+ * La identidad del local en la pantalla del cuadrante.
  *
- * Los ajustes se abren **encima** del cuadrante, sin desmontarlo, igual que hace la
- * pila de expo-router: por eso al volver el cuadrante sigue en la semana en la que
- * estaba. Desmontándolo, la semana se perdería en el test y no en la app.
+ * El nombre y el logo vienen con la app y no se editan desde ninguna pantalla: la
+ * de ajustes se retiró el 08/09/2026 y no queda ningún ajuste que tocar.
  */
-function CuadranteConAjustes() {
-  const [enAjustes, setEnAjustes] = useState(false);
 
-  return (
-    <View style={{ flex: 1 }}>
-      <View style={{ flex: 1, display: enAjustes ? 'none' : 'flex' }}>
-        <PantallaCuadrante
-          reloj={() => MIERCOLES_A_LAS_DIEZ}
-          anchoDePantalla={ANCHO_MINIMO_SOPORTADO}
-          onIrAAjustes={() => setEnAjustes(true)}
-        />
-      </View>
-      {enAjustes ? <PantallaAjustes onVolver={() => setEnAjustes(false)} /> : null}
-    </View>
-  );
-}
+import { fireEvent, screen } from '@testing-library/react-native';
 
-async function renderizarCuadranteConAjustes(nombreDelLocal = '') {
-  const datos = crearAlmacenEnMemoria(['Ana', 'Bruno']);
-  if (nombreDelLocal) datos.escribirNombreDelLocal(nombreDelLocal);
-  instalarAlmacen(datos);
+import {
+  empleadoLlamado,
+  estiloCombinado,
+  renderizarCuadrante,
+  renderizarPanelDeEmpleados,
+} from '../../pruebas/ayudas';
+import { NOMBRE_DEL_LOCAL } from '../CabeceraSemana';
 
-  await render(
-    <ConAreaSegura>
-      <CuadranteConAjustes />
-    </ConAreaSegura>,
-  );
-  return datos;
-}
+/** Los 20 empleados de la escala real del local. */
+const VEINTE = Array.from({ length: 20 }, (_, i) => `Empleado ${String(i + 1).padStart(2, '0')}`);
 
 describe('La pantalla de inicio identifica el local', () => {
   it('Abrir la app con el nombre del local ya escrito', async () => {
-    await renderizarCuadrante({ nombreDelLocal: 'La Esquina café' });
+    await renderizarCuadrante();
 
     expect(screen.getByTestId('logo-del-local')).toBeTruthy();
     expect(screen.getByTestId('nombre-del-local')).toHaveTextContent('La Esquina café');
@@ -69,28 +30,44 @@ describe('La pantalla de inicio identifica el local', () => {
     expect(screen.getByTestId('rejilla-cuadrante')).toBeTruthy();
   });
 
-  it('Abrir la app sin haber escrito todavía el nombre', async () => {
-    await renderizarCuadrante();
+  it('La identidad del local no le quita sitio a la rejilla', async () => {
+    // A la anchura mínima soportada y con la plantilla completa.
+    const { empleado } = await renderizarCuadrante({ plantilla: VEINTE });
 
-    expect(screen.getByTestId('logo-del-local')).toBeTruthy();
-    expect(screen.getByText(INVITACION_A_ESCRIBIR_EL_NOMBRE)).toBeTruthy();
-    // Sin nombre inventado ni hueco mudo donde debería estar.
-    expect(screen.queryByTestId('nombre-del-local')).toBeNull();
-  });
+    // Las siete columnas siguen viéndose a la vez, sin scroll horizontal.
+    expect(screen.getAllByTestId(/^cabecera-dia-/)).toHaveLength(7);
+    expect(screen.getByTestId('scroll-plantilla').props.horizontal).toBeFalsy();
 
-  it('Un nombre de local muy largo no descoloca la rejilla', async () => {
-    await renderizarCuadrante({
-      nombreDelLocal: 'Cafetería Restaurante Los 24 Hermanos de la Ribera del Duero',
-    });
+    // Y las 20 filas siguen ahí, dentro del scroll vertical de la plantilla.
+    expect(screen.getAllByTestId(/^fila-empleado-/)).toHaveLength(20);
+    expect(screen.getByTestId(`fila-empleado-${empleado('Empleado 20').id}`)).toBeTruthy();
 
+    // La fila de identidad mide siempre lo mismo: el nombre es fijo y se trunca en
+    // una sola línea, así que no puede empujar a la rejilla hacia abajo.
     const nombre = screen.getByTestId('nombre-del-local');
     expect(nombre.props.numberOfLines).toBe(1);
     expect(nombre.props.ellipsizeMode).toBe('tail');
-    expect(screen.getByTestId('scroll-plantilla').props.horizontal).toBeFalsy();
+  });
+
+  it('La app no ofrece cambiar el nombre ni el logo', async () => {
+    await renderizarCuadrante();
+
+    // En el cuadrante no hay acceso a ninguna pantalla de ajustes.
+    expect(screen.queryByTestId('accion-ir-a-ajustes')).toBeNull();
+    expect(screen.queryByTestId('pantalla-ajustes')).toBeNull();
+    expect(screen.queryByText(/ajustes|configuraci[óo]n|cambiar el logo/i)).toBeNull();
+
+    // Ni en el panel de empleados, ni en una ficha.
+    const datos = await renderizarPanelDeEmpleados({ plantilla: ['Bruno'] });
+    expect(screen.queryByText(/ajustes|configuraci[óo]n|cambiar el logo/i)).toBeNull();
+    await fireEvent.press(
+      screen.getByTestId(`fila-de-la-lista-${empleadoLlamado(datos, 'Bruno').id}`),
+    );
+    expect(screen.queryByText(/ajustes|configuraci[óo]n|cambiar el logo/i)).toBeNull();
   });
 
   it('El nombre del local y la semana no se confunden', async () => {
-    await renderizarCuadrante({ nombreDelLocal: 'La Esquina café' });
+    await renderizarCuadrante();
 
     const nombre = estiloCombinado(screen.getByTestId('nombre-del-local'));
     const rango = estiloCombinado(screen.getByTestId('rango-de-la-semana'));
@@ -103,100 +80,20 @@ describe('La pantalla de inicio identifica el local', () => {
   });
 
   it('el logo no crece con la letra del sistema', async () => {
-    await renderizarCuadrante({ nombreDelLocal: 'La Esquina café' });
+    await renderizarCuadrante();
 
     const logo = estiloCombinado(screen.getByTestId('logo-del-local'));
     expect(logo.width).toBe(32);
     expect(logo.height).toBe(32);
   });
-});
 
-describe('Acceso a los ajustes desde el cuadrante', () => {
-  it('Ir a los ajustes y volver al cuadrante', async () => {
-    await renderizarCuadranteConAjustes('Bar Paco');
+  it('el nombre del local viene con la app y no se lee de ningún almacenamiento', async () => {
+    // No hay operación de lectura ni de escritura del nombre en la capa de datos:
+    // el día que alguien vuelva a guardarlo, este test lo dirá.
+    const { datos } = await renderizarCuadrante();
 
-    // Se deja el cuadrante en otra semana para comprobar que vuelve a ella.
-    await fireEvent.press(screen.getByTestId('accion-semana-siguiente'));
-    expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('14/09/2026 - 20/09/2026');
-
-    await fireEvent.press(screen.getByTestId('accion-ir-a-ajustes'));
-    expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
-
-    await fireEvent.changeText(screen.getByTestId('campo-nombre-del-local'), 'La Esquina café');
-    await fireEvent.press(screen.getByTestId('accion-volver-al-cuadrante'));
-
-    expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('14/09/2026 - 20/09/2026');
-    expect(screen.getByTestId('nombre-del-local')).toHaveTextContent('La Esquina café');
-  });
-
-  it('la invitación a escribir el nombre lleva también a los ajustes', async () => {
-    await renderizarCuadranteConAjustes();
-
-    await fireEvent.press(screen.getByTestId('accion-escribir-el-nombre-del-local'));
-
-    expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
-  });
-
-  it('El estado vacío no ofrece los ajustes', async () => {
-    await renderizarCuadrante({ plantilla: [] });
-
-    expect(screen.getByTestId('estado-vacio')).toBeTruthy();
-    expect(screen.queryByTestId('accion-ir-a-ajustes')).toBeNull();
-    expect(screen.queryByTestId('accion-escribir-el-nombre-del-local')).toBeNull();
-  });
-});
-
-describe('Pantalla de ajustes del local', () => {
-  it('Escribir el nombre del local desde los ajustes', async () => {
-    const datos = await renderizarCuadranteConAjustes();
-    await fireEvent.press(screen.getByTestId('accion-escribir-el-nombre-del-local'));
-
-    await fireEvent.changeText(screen.getByTestId('campo-nombre-del-local'), 'La Esquina café');
-
-    expect(screen.getByTestId('guardado-nombre-del-local')).toHaveTextContent(TEXTO_GUARDADO);
-    expect(datos.leerNombreDelLocal()).toBe('La Esquina café');
-
-    await fireEvent.press(screen.getByTestId('accion-volver-al-cuadrante'));
-    expect(screen.getByTestId('nombre-del-local')).toHaveTextContent('La Esquina café');
-  });
-
-  it('Corregir el nombre del local', async () => {
-    const datos = await renderizarCuadranteConAjustes('La Esquina cafe');
-    await fireEvent.press(screen.getByTestId('accion-ir-a-ajustes'));
-
-    await fireEvent.changeText(screen.getByTestId('campo-nombre-del-local'), 'La Esquina café');
-    await fireEvent.press(screen.getByTestId('accion-volver-al-cuadrante'));
-
-    expect(screen.getByTestId('nombre-del-local')).toHaveTextContent('La Esquina café');
-    expect(datos.leerNombreDelLocal()).toBe('La Esquina café');
-  });
-
-  it('Los ajustes no ofrecen nada más que el nombre', async () => {
-    await renderizarCuadranteConAjustes('La Esquina café');
-    await fireEvent.press(screen.getByTestId('accion-ir-a-ajustes'));
-
-    expect(screen.getByTestId('campo-nombre-del-local')).toBeTruthy();
-    expect(screen.getByTestId('accion-volver-al-cuadrante')).toBeTruthy();
-    for (const loQueNoEsta of [/copia de seguridad/i, /borrar/i, /idioma/i, /tema/i, /exportar/i]) {
-      expect(screen.queryByText(loQueNoEsta)).toBeNull();
-    }
-  });
-
-  it('al abrir los ajustes todavía no se dice que se haya guardado nada', async () => {
-    await renderizarCuadranteConAjustes('La Esquina café');
-    await fireEvent.press(screen.getByTestId('accion-ir-a-ajustes'));
-
-    expect(screen.queryByTestId('guardado-nombre-del-local')).toBeNull();
-  });
-
-  it('el aviso de guardado es el mismo que el de la ficha del empleado', async () => {
-    await renderizarCuadranteConAjustes('La Esquina café');
-    await fireEvent.press(screen.getByTestId('accion-ir-a-ajustes'));
-    await fireEvent.changeText(screen.getByTestId('campo-nombre-del-local'), 'Bar Paco');
-
-    const aviso = estiloCombinado(screen.getByTestId('guardado-nombre-del-local'));
-    // El mismo componente en las dos pantallas: mismo texto y mismo color.
-    expect(screen.getByTestId('guardado-nombre-del-local')).toHaveTextContent(TEXTO_GUARDADO);
-    expect(aviso.color).toBeTruthy();
+    expect(NOMBRE_DEL_LOCAL).toBe('La Esquina café');
+    expect(datos).not.toHaveProperty('leerNombreDelLocal');
+    expect(datos).not.toHaveProperty('escribirNombreDelLocal');
   });
 });

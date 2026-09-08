@@ -5,6 +5,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import { crearAlmacenEnMemoria, instalarAlmacen } from '../../datos/almacenCuadrante';
+import type { AlmacenCuadrante } from '../../datos/almacenCuadrante';
 import { empleadoLlamado, renderizarPanelDeEmpleados } from '../../pruebas/ayudas';
 import { estiloCombinado } from '../../pruebas/ayudas';
 import { ANCHO_MINIMO_SOPORTADO, LADO_PULSABLE_MINIMO } from '../medidas';
@@ -26,22 +27,100 @@ function nombresDeLaLista(): string[] {
     .map((nodo) => nodo.props.children as string);
 }
 
+/** Escribe los puestos de una plantilla ya dada de alta. */
+function conPuestos(puestos: Record<string, string>) {
+  return (almacen: AlmacenCuadrante) => {
+    for (const [nombre, puesto] of Object.entries(puestos)) {
+      almacen.editarPuesto(empleadoLlamado(almacen, nombre).id, puesto);
+    }
+  };
+}
+
 describe('Lista de empleados del panel', () => {
   it('Ver la lista de la plantilla', async () => {
-    const datos = await renderizarPanelDeEmpleados({ plantilla: ['Carmen', 'Ana', 'Bruno'] });
+    const datos = await renderizarPanelDeEmpleados({
+      plantilla: ['Carmen', 'Ana', 'Bruno'],
+      prepararDatos: conPuestos({ Ana: 'Barra', Bruno: 'Cocina', Carmen: 'Sala' }),
+    });
 
     // Tres filas, en orden alfabético del español.
     expect(screen.getAllByTestId(/^fila-de-la-lista-/)).toHaveLength(3);
     expect(nombresDeLaLista()).toEqual(['Ana', 'Bruno', 'Carmen']);
 
-    // Cada fila muestra solo el nombre: ni teléfono, ni email, ni nota, ni vacaciones.
-    const ana = empleadoLlamado(datos, 'Ana');
-    const fila = screen.getByTestId(`fila-de-la-lista-${ana.id}`);
-    expect(within(fila).getByText('Ana')).toBeTruthy();
-    expect(within(fila).getAllByText(/./)).toHaveLength(1);
+    // Cada fila muestra el nombre y el puesto de ese empleado, y un acceso a su
+    // ficha al final: ni teléfono, ni email, ni nota, ni vacaciones.
+    for (const [nombre, puesto] of [
+      ['Ana', 'Barra'],
+      ['Bruno', 'Cocina'],
+      ['Carmen', 'Sala'],
+    ]) {
+      const empleado = empleadoLlamado(datos, nombre);
+      const fila = screen.getByTestId(`fila-de-la-lista-${empleado.id}`);
+      expect(within(fila).getByTestId(`nombre-de-la-lista-${empleado.id}`)).toHaveTextContent(nombre);
+      expect(within(fila).getByTestId(`puesto-de-la-lista-${empleado.id}`)).toHaveTextContent(puesto);
+      expect(within(fila).getByTestId(`acceso-a-la-ficha-${empleado.id}`)).toBeTruthy();
+    }
 
     // Y se ofrece la acción de dar de alta a un empleado nuevo.
     expect(screen.getByTestId('accion-dar-de-alta')).toHaveTextContent(ACCION_ALTA);
+  });
+
+  it('Un empleado sin puesto escrito', async () => {
+    const datos = await renderizarPanelDeEmpleados({
+      plantilla: ['Ana', 'Bruno'],
+      prepararDatos: conPuestos({ Ana: 'Barra' }),
+    });
+    const ana = empleadoLlamado(datos, 'Ana');
+    const bruno = empleadoLlamado(datos, 'Bruno');
+
+    expect(screen.getByTestId(`puesto-de-la-lista-${ana.id}`)).toHaveTextContent('Barra');
+    // Ni hueco vacío ni texto de relleno: la fila de Bruno muestra solo su nombre.
+    expect(screen.queryByTestId(`puesto-de-la-lista-${bruno.id}`)).toBeNull();
+    expect(screen.getByTestId(`nombre-de-la-lista-${bruno.id}`)).toHaveTextContent('Bruno');
+
+    // Y las dos filas conservan el mismo alto.
+    const alto = (id: string) => estiloCombinado(screen.getByTestId(`fila-de-la-lista-${id}`));
+    expect(alto(bruno.id).minHeight).toBe(alto(ana.id).minHeight);
+    expect(alto(bruno.id).height).toBe(alto(ana.id).height);
+  });
+
+  it('El puesto se trunca antes que el nombre', async () => {
+    const nombreLargo = 'Maricarmen de la Fuente Etxebarria';
+    const datos = await renderizarPanelDeEmpleados({
+      plantilla: [nombreLargo],
+      prepararDatos: conPuestos({ [nombreLargo]: 'Responsable de sala y barra' }),
+    });
+    const empleado = empleadoLlamado(datos, nombreLargo);
+
+    const nombre = estiloCombinado(screen.getByTestId(`nombre-de-la-lista-${empleado.id}`));
+    const puesto = estiloCombinado(screen.getByTestId(`puesto-de-la-lista-${empleado.id}`));
+
+    // El puesto cede ancho mucho antes que el nombre.
+    expect(Number(puesto.flexShrink)).toBeGreaterThan(Number(nombre.flexShrink));
+    expect(Number(nombre.flexShrink)).toBeGreaterThan(0);
+
+    // El acceso a la ficha no cede ninguno: sigue visible y pulsable.
+    const acceso = screen.getByTestId(`acceso-a-la-ficha-${empleado.id}`);
+    expect(estiloCombinado(acceso).flexShrink).toBe(0);
+    expect(estiloCombinado(acceso).minWidth).toBe(LADO_PULSABLE_MINIMO);
+    expect(estiloCombinado(acceso).minHeight).toBe(LADO_PULSABLE_MINIMO);
+  });
+
+  it('El acceso de la fila y la fila llevan al mismo sitio', async () => {
+    const datos = crearAlmacenEnMemoria(['Ana', 'Bruno']);
+    instalarAlmacen(datos);
+    const abrir = jest.fn();
+    await render(<PantallaEmpleados onAbrirFicha={abrir} />);
+    const bruno = empleadoLlamado(datos, 'Bruno');
+
+    await tocar(`acceso-a-la-ficha-${bruno.id}`);
+    expect(abrir).toHaveBeenCalledWith(bruno.id);
+
+    // Y cualquier otro punto de la fila lleva a la misma ficha: el acceso es la
+    // pista visual, no el único camino.
+    abrir.mockClear();
+    await tocar(`fila-de-la-lista-${bruno.id}`);
+    expect(abrir).toHaveBeenCalledWith(bruno.id);
   });
 
   it('La lista no ofrece dar de baja', async () => {

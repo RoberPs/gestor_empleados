@@ -1,5 +1,9 @@
 /**
- * Alta de un empleado: nombre, teléfono y email.
+ * Alta de un empleado: nombre, puesto, teléfono y email.
+ *
+ * El puesto es texto libre y opcional: no hay lista cerrada, ni catálogo, ni
+ * autocompletado. Lo que el encargado necesita saber al planificar es quién está en
+ * barra y quién en cocina, y eso lo escribe él con sus palabras.
  *
  * El alta es el único punto del panel que se confirma con una acción explícita.
  * Hasta entonces no hay empleado, y el nombre —el único campo obligatorio— puede
@@ -25,12 +29,13 @@ interface Props {
   readonly visible: boolean;
   /** Plantilla actual, para comprobar que el nombre no está repetido. */
   readonly plantilla: readonly Empleado[];
-  readonly onGuardar: (nombre: string, telefono: string, email: string) => void;
+  readonly onGuardar: (nombre: string, telefono: string, email: string, puesto: string) => void;
   readonly onCancelar: () => void;
 }
 
 export function FormularioAltaEmpleado({ visible, plantilla, onGuardar, onCancelar }: Props) {
   const [nombre, setNombre] = useState('');
+  const [puesto, setPuesto] = useState('');
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
   const [motivo, setMotivo] = useState<string | null>(null);
@@ -57,14 +62,16 @@ export function FormularioAltaEmpleado({ visible, plantilla, onGuardar, onCancel
 
     setMotivo(null);
     setNombre('');
+    setPuesto('');
     setTelefono('');
     setEmail('');
-    onGuardar(nombre, telefono, email);
+    onGuardar(nombre, telefono, email, puesto);
   }
 
   function cancelar() {
     setMotivo(null);
     setNombre('');
+    setPuesto('');
     setTelefono('');
     setEmail('');
     onCancelar();
@@ -84,6 +91,17 @@ export function FormularioAltaEmpleado({ visible, plantilla, onGuardar, onCancel
               value={nombre}
               onChangeText={corregir(setNombre)}
               placeholder="Bruno"
+              style={estilos.campo}
+            />
+
+            {/* Texto libre: sin lista de puestos que mantener ni formato que cumplir. */}
+            <Text style={estilos.etiqueta}>Puesto (opcional)</Text>
+            <TextInput
+              testID="campo-puesto-empleado"
+              accessibilityLabel="Puesto del empleado"
+              value={puesto}
+              onChangeText={corregir(setPuesto)}
+              placeholder="Cocina"
               style={estilos.campo}
             />
 

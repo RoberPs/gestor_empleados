@@ -2,7 +2,14 @@ import { act, fireEvent, screen, within } from '@testing-library/react-native';
 
 import { diasDeLaSemana } from '../../dominio/semana';
 import { ANCHO_MINIMO_SOPORTADO, LADO_PULSABLE_MINIMO, repartirAnchos } from '../medidas';
-import { anchoDe, estiloCombinado, hora, renderizarCuadrante } from '../../pruebas/ayudas';
+import {
+  anchoDe,
+  empleadoLlamado,
+  estiloCombinado,
+  hora,
+  renderizarCuadrante,
+  renderizarCuadranteConFicha,
+} from '../../pruebas/ayudas';
 
 const DIAS = diasDeLaSemana({ lunes: '2026-09-07' });
 
@@ -61,6 +68,54 @@ describe('Rejilla de empleados por días', () => {
     expect(screen.queryByText(/\d{9}/)).toBeNull();
     expect(screen.queryByText(/teléfono/i)).toBeNull();
     expect(screen.queryByText(/email/i)).toBeNull();
+  });
+
+  it('Abrir la ficha desde el nombre de la fila', async () => {
+    const datos = await renderizarCuadranteConFicha({ plantilla: ['Ana', 'Bruno'] });
+    const bruno = empleadoLlamado(datos, 'Bruno');
+
+    // El encargado se desplaza a la semana siguiente.
+    await fireEvent.press(screen.getByTestId('accion-semana-siguiente'));
+    expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('14/09/2026 - 20/09/2026');
+
+    await fireEvent.press(screen.getByTestId(`columna-nombres-${bruno.id}`));
+
+    expect(screen.getByTestId('titulo-de-la-ficha')).toHaveTextContent('Bruno');
+
+    await fireEvent.press(screen.getByTestId('accion-volver-a-la-lista'));
+
+    // Vuelve al cuadrante, en la misma semana en la que estaba.
+    expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('14/09/2026 - 20/09/2026');
+    expect(screen.getByTestId('rejilla-cuadrante')).toBeTruthy();
+  });
+
+  it('Un nombre truncado se lee entero abriendo su ficha', async () => {
+    const nombreLargo = 'Maricarmen de la Fuente Etxebarria';
+    const datos = await renderizarCuadranteConFicha({ plantilla: [nombreLargo] });
+    const empleada = empleadoLlamado(datos, nombreLargo);
+
+    // En la rejilla se ve truncado.
+    const enLaRejilla = screen.getByTestId(`nombre-empleado-${empleada.id}`);
+    expect(enLaRejilla.props.numberOfLines).toBe(1);
+    expect(enLaRejilla.props.ellipsizeMode).toBe('tail');
+
+    await fireEvent.press(screen.getByTestId(`nombre-empleado-${empleada.id}`));
+
+    // Y en la ficha, entero.
+    expect(screen.getByTestId('titulo-de-la-ficha')).toHaveTextContent(nombreLargo);
+    expect(screen.getByTestId('titulo-de-la-ficha').props.numberOfLines).toBeUndefined();
+  });
+
+  it('el nombre pulsable no le quita área a las celdas de día', async () => {
+    const { empleado } = await renderizarCuadrante({ plantilla: ['Ana'] });
+    const ana = empleado('Ana');
+    const anchos = repartirAnchos(ANCHO_MINIMO_SOPORTADO);
+
+    // La columna de nombres, ahora pulsable, mide exactamente lo que medía.
+    expect(anchoDe(screen.getByTestId(`columna-nombres-${ana.id}`))).toBe(anchos.nombres);
+    for (const dia of DIAS) {
+      expect(anchoDe(screen.getByTestId(`celda-${ana.id}-${dia}`))).toBe(anchos.dia);
+    }
   });
 
   it('Un empleado borrado desaparece también de las semanas pasadas', async () => {

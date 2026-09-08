@@ -21,12 +21,14 @@ import type { BaseDeDatos, ValorSql } from './bd';
 interface FilaEmpleado {
   readonly id: number;
   readonly nombre: string;
+  readonly puesto: string | null;
   readonly telefono: string | null;
   readonly email: string | null;
   readonly nota: string | null;
+  readonly motivo_ausencia: string | null;
 }
 
-const COLUMNAS = 'id, nombre, telefono, email, nota';
+const COLUMNAS = 'id, nombre, puesto, telefono, email, nota, motivo_ausencia';
 
 /**
  * De fila a ficha. Un campo opcional vacío **no aparece** en el objeto, igual que en
@@ -40,9 +42,13 @@ function aEmpleado(fila: FilaEmpleado): Empleado {
   return {
     id: String(fila.id),
     nombre: fila.nombre,
+    // `puesto` y `motivo_ausencia` llegaron con la migración 3 y las filas que ya
+    // existían las tienen a cadena vacía: vacío y sin escribir son lo mismo aquí.
+    ...(fila.puesto ? { puesto: fila.puesto } : {}),
     ...(fila.telefono ? { telefono: fila.telefono } : {}),
     ...(fila.email ? { email: fila.email } : {}),
     ...(fila.nota ? { nota: fila.nota } : {}),
+    ...(fila.motivo_ausencia ? { motivoAusencia: fila.motivo_ausencia } : {}),
   };
 }
 
@@ -69,7 +75,11 @@ export function crearAlmacenEmpleadosSqlite(bd: BaseDeDatos): AlmacenEmpleados {
    * Cambia un campo opcional de la ficha sin tocar los demás. Devuelve si llegó a
    * cambiar algo, para no avisar de una escritura sobre alguien que ya no está.
    */
-  function editarCampo(id: IdEmpleado, columna: 'telefono' | 'email' | 'nota', valor: string): void {
+  function editarCampo(
+    id: IdEmpleado,
+    columna: 'puesto' | 'telefono' | 'email' | 'nota' | 'motivo_ausencia',
+    valor: string,
+  ): void {
     const idDeFila = comoIdDeFila(id);
     if (idDeFila === null) return;
 
@@ -104,7 +114,7 @@ export function crearAlmacenEmpleadosSqlite(bd: BaseDeDatos): AlmacenEmpleados {
       return fila ? aEmpleado(fila) : null;
     },
 
-    altaEmpleado(nombre, telefono, email) {
+    altaEmpleado(nombre, telefono, email, puesto) {
       const nombreGuardado = sanearCampo(nombre);
       if (nombreGuardado.length === 0) return null;
 
@@ -113,10 +123,12 @@ export function crearAlmacenEmpleadosSqlite(bd: BaseDeDatos): AlmacenEmpleados {
         // entera o no entra ninguna. Si el nombre está repetido, el índice único la
         // rechaza y no queda rastro de la escritura.
         const escritura = bd.escribir(
-          'INSERT INTO empleados (nombre, nombre_comparable, telefono, email, nota)' +
-            ' VALUES (?, ?, ?, ?, NULL)',
+          'INSERT INTO empleados' +
+            ' (nombre, nombre_comparable, puesto, telefono, email, nota, motivo_ausencia)' +
+            ' VALUES (?, ?, ?, ?, ?, NULL, NULL)',
           nombreGuardado,
           formaComparable(nombre),
+          campoOpcional(puesto),
           campoOpcional(telefono),
           campoOpcional(email),
         );
@@ -124,6 +136,8 @@ export function crearAlmacenEmpleadosSqlite(bd: BaseDeDatos): AlmacenEmpleados {
         return {
           id: String(escritura.ultimoId),
           nombre: nombreGuardado,
+          // El puesto se guarda saneado, igual que el nombre, el teléfono y el email.
+          ...(campoOpcional(puesto) ? { puesto: sanearCampo(puesto ?? '') } : {}),
           ...(campoOpcional(telefono) ? { telefono: sanearCampo(telefono ?? '') } : {}),
           ...(campoOpcional(email) ? { email: sanearCampo(email ?? '') } : {}),
         };
@@ -158,6 +172,10 @@ export function crearAlmacenEmpleadosSqlite(bd: BaseDeDatos): AlmacenEmpleados {
       }
     },
 
+    editarPuesto(id, puesto) {
+      editarCampo(id, 'puesto', puesto);
+    },
+
     editarTelefono(id, telefono) {
       editarCampo(id, 'telefono', telefono);
     },
@@ -168,6 +186,12 @@ export function crearAlmacenEmpleadosSqlite(bd: BaseDeDatos): AlmacenEmpleados {
 
     editarNota(id, nota) {
       editarCampo(id, 'nota', nota);
+    },
+
+    editarMotivoAusencia(id, motivo) {
+      // Como la nota: texto libre, sin longitud máxima y sin más estructura que la
+      // de quitarle los espacios de los extremos. El motivo nuevo pisa al anterior.
+      editarCampo(id, 'motivo_ausencia', motivo);
     },
 
     borrarEmpleado(id) {

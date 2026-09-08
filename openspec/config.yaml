@@ -6,9 +6,11 @@ context: |
   de 10 a 20 empleados. La usa solo el encargado en su móvil; los empleados
   nunca entran en ella. El encargado no tiene perfil técnico.
 
-  El nombre comercial de la app, el nombre del local y el del responsable no se
-  fijan en código: son datos editables desde la propia app (spec pendiente).
-  Ningún artefacto debe dar por hecho un nombre concreto.
+  El local se llama «La Esquina café». El 08/09/2026 se decidió fijar su nombre y su
+  logo en el código y retirar la pantalla de ajustes que servía para editarlos:
+  el encargado lo escribió una vez y no va a volver a tocarlo. El nombre
+  comercial de la app y el del responsable siguen sin fijarse: ningún artefacto
+  debe dar por hecho un nombre concreto para esos dos.
 
   Cubre tres cosas y solo tres: planificar el cuadrante semanal (turnos,
   ausencias, vacaciones), registrar las horas realmente trabajadas por día y

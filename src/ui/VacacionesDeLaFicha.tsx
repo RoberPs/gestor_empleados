@@ -31,7 +31,18 @@ import { usarAlmacen } from './usarAlmacen';
 export const MENSAJE_SIN_VACACIONES = 'No tiene ningún rango de vacaciones.';
 export const ACCION_ANADIR_RANGO = 'Añadir un rango de vacaciones';
 export const MOTIVO_FECHA_ILEGIBLE =
-  'Escribe las fechas como dd/mm/aaaa. Valen 7/9/2026, 07/09/2026, 7-9-2026, 7.9.2026 o 07092026.';
+  'Escribe las fechas como dd/mm/aaaa. Valen 07092026, 7/9/2026, 07/09/2026, 7-9-2026 y 7.9.2026.';
+
+/**
+ * Lo que se ve en el campo de fecha mientras está vacío.
+ *
+ * Solo dígitos, y no `10/09/2026`: el campo abre el teclado numérico, que en Android
+ * **no ofrece la barra**. Una pista que enseña un carácter que no se puede teclear
+ * deja al encargado buscando en un teclado donde no está. Esta forma sí se puede
+ * seguir tal cual, y `analizarFecha` la entiende igual que a las demás.
+ */
+export const PISTA_DE_FECHA_INICIO = '10092026';
+export const PISTA_DE_FECHA_FIN = '14092026';
 
 /** Cuántos días del rango pierden lo que tenían al marcarlo como vacaciones. */
 export function avisoDeDiasConContenido(dias: number): string {
@@ -237,7 +248,7 @@ function FormularioRango({
             accessibilityLabel="Fecha de inicio"
             value={inicio}
             onChangeText={corregir(setInicio)}
-            placeholder="10/09/2026"
+            placeholder={PISTA_DE_FECHA_INICIO}
             keyboardType="numeric"
             style={estilos.campo}
           />
@@ -248,7 +259,7 @@ function FormularioRango({
             accessibilityLabel="Fecha de fin"
             value={fin}
             onChangeText={corregir(setFin)}
-            placeholder="14/09/2026"
+            placeholder={PISTA_DE_FECHA_FIN}
             keyboardType="numeric"
             style={estilos.campo}
           />

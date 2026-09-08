@@ -37,8 +37,20 @@ describe('Acciones que ofrece cada estado de la celda', () => {
     expect(tipos(dosTurnos)).toContain('marcar-vacaciones');
   });
 
-  it('sobre una celda con ausencia: cambiar a vacaciones, sustituir por turno planificado y eliminarla', () => {
-    expect(tipos(ausencia)).toEqual(['marcar-vacaciones', 'crear-turno', 'eliminar-contenido']);
+  it('sobre una celda con ausencia: ver la ausencia, cambiar a vacaciones, sustituir por turno planificado y eliminarla', () => {
+    expect(tipos(ausencia)).toEqual([
+      'ver-ausencia',
+      'marcar-vacaciones',
+      'crear-turno',
+      'eliminar-contenido',
+    ]);
+  });
+
+  it('ver la ausencia solo se ofrece sobre una celda de ausencia', () => {
+    // Las acciones de una celda de vacaciones no han cambiado, ni las de las demás.
+    for (const contenido of [vacia, unTurno, dosTurnos, vacaciones]) {
+      expect(tipos(contenido)).not.toContain('ver-ausencia');
+    }
   });
 
   it('sobre una celda con vacaciones: cambiar a ausencia, sustituir por turno planificado y eliminarlas', () => {
@@ -58,6 +70,7 @@ describe('Acciones que ofrece cada estado de la celda', () => {
     expect(etiquetaDeAccion({ tipo: 'marcar-vacaciones' }, vacia)).toBe('Marcar vacaciones');
     expect(etiquetaDeAccion({ tipo: 'marcar-ausencia' }, vacaciones)).toBe('Cambiar a ausencia');
     expect(etiquetaDeAccion({ tipo: 'marcar-vacaciones' }, ausencia)).toBe('Cambiar a vacaciones');
+    expect(etiquetaDeAccion({ tipo: 'ver-ausencia' }, ausencia)).toBe('Ver la ausencia');
   });
 
   it('las acciones sobre un turno nombran sus horas completas, en 24h', () => {

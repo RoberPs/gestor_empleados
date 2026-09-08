@@ -63,7 +63,11 @@ describe('Validez de los campos de la ficha al escribir', () => {
     const carmen = almacen.altaEmpleado('Carmen');
 
     expect(carmen).not.toBeNull();
+    // Ni puesto, ni teléfono, ni email, ni nota, ni motivo de la ausencia: un campo
+    // opcional vacío no aparece en la ficha.
     expect(almacen.leerEmpleado(carmen!.id)).toEqual({ id: carmen!.id, nombre: 'Carmen' });
+    expect(almacen.leerEmpleado(carmen!.id)!.puesto).toBeUndefined();
+    expect(almacen.leerEmpleado(carmen!.id)!.motivoAusencia).toBeUndefined();
   });
 
   it('Un empleado sin nombre no se guarda', () => {
@@ -151,6 +155,76 @@ describe('Validez de los campos de la ficha al escribir', () => {
 
     expect(almacen.editarNombre(ana.id, '   ')).toBe(false);
     expect(almacen.leerEmpleado(ana.id)!.nombre).toBe('Ana');
+  });
+
+  it('Dos empleados con el mismo puesto se guardan', () => {
+    const almacen = plantillaRecienCreada();
+    const ana = almacen.altaEmpleado('Ana', undefined, undefined, 'Barra')!;
+
+    const bruno = almacen.altaEmpleado('Bruno', undefined, undefined, 'Barra');
+
+    // El puesto no interviene en la unicidad: lo único que no se puede repetir es
+    // el nombre.
+    expect(bruno).not.toBeNull();
+    expect(almacen.leerEmpleado(ana.id)!.puesto).toBe('Barra');
+    expect(almacen.leerEmpleado(bruno!.id)!.puesto).toBe('Barra');
+  });
+
+  it('El puesto se guarda sin los espacios de los extremos', () => {
+    const almacen = plantillaRecienCreada();
+    const bruno = almacen.altaEmpleado('Bruno')!;
+
+    almacen.editarPuesto(bruno.id, ' Jefe de cocina ');
+
+    expect(almacen.leerEmpleado(bruno.id)!.puesto).toBe('Jefe de cocina');
+  });
+
+  it('Vaciar el puesto de un empleado', () => {
+    const almacen = plantillaRecienCreada();
+    const ana = almacen.altaEmpleado('Ana', '600 11 22 33', 'ana@ejemplo.es', 'Barra')!;
+    almacen.editarNota(ana.id, 'Solo mañanas');
+    almacen.editarMotivoAusencia(ana.id, 'Baja médica hasta el 20/09/2026');
+
+    almacen.editarPuesto(ana.id, '');
+
+    // El puesto se vacía y ningún otro campo se entera.
+    expect(almacen.leerEmpleado(ana.id)).toEqual({
+      id: ana.id,
+      nombre: 'Ana',
+      telefono: '600 11 22 33',
+      email: 'ana@ejemplo.es',
+      nota: 'Solo mañanas',
+      motivoAusencia: 'Baja médica hasta el 20/09/2026',
+    });
+  });
+
+  it('el motivo de la ausencia es texto libre, sin longitud máxima, y el nuevo pisa al anterior', () => {
+    const almacen = plantillaRecienCreada();
+    const bruno = almacen.altaEmpleado('Bruno')!;
+    const largo = 'Baja médica. '.repeat(200);
+
+    almacen.editarMotivoAusencia(bruno.id, 'Asuntos propios');
+    expect(almacen.leerEmpleado(bruno.id)!.motivoAusencia).toBe('Asuntos propios');
+
+    // No hay histórico: el segundo motivo sustituye al primero, como la nota.
+    almacen.editarMotivoAusencia(bruno.id, largo);
+    expect(almacen.leerEmpleado(bruno.id)!.motivoAusencia).toBe(largo.trim());
+
+    almacen.editarMotivoAusencia(bruno.id, '');
+    expect(almacen.leerEmpleado(bruno.id)!.motivoAusencia).toBeUndefined();
+  });
+
+  it('el puesto no altera el orden alfabético de la lista', () => {
+    const almacen = conPlantilla('Carmen', 'Ana', 'Bruno');
+    const orden = nombres(almacen);
+
+    // Puestos distintos, y escritos en un orden que no es el alfabético.
+    almacen.editarPuesto(buscar(almacen, 'Carmen').id, 'Barra');
+    almacen.editarPuesto(buscar(almacen, 'Ana').id, 'Sala');
+    almacen.editarPuesto(buscar(almacen, 'Bruno').id, 'Cocina');
+
+    expect(nombres(almacen)).toEqual(orden);
+    expect(nombres(almacen)).toEqual(['Ana', 'Bruno', 'Carmen']);
   });
 
   it('una edición no puede dejar dos empleados con el mismo nombre', () => {
