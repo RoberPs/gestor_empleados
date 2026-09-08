@@ -145,3 +145,36 @@ Las horas del documento MUST mostrarse en formato 24h y las fechas como dd/mm/aa
 - **AND** el encargado exporta la semana
 - **THEN** el documento muestra su nombre completo
 - **AND** no aparecen puntos suspensivos ni ninguna otra marca de texto recortado
+
+### Requirement: El documento distingue sus partes de un vistazo
+
+El documento MUST distinguir visualmente sus tres partes, para que se lea como un cuadrante y no como una lista de números:
+
+- La **cabecera de días** MUST separarse del contenido.
+- La **columna de empleados** MUST separarse de las columnas de día.
+- Las **filas de empleado** MUST poder seguirse de lunes a domingo sin perder la línea, también con la plantilla completa de 20 empleados.
+
+Ninguna de esas distinciones MUST depender únicamente del color: el documento se imprime, y a menudo en blanco y negro. Cada parte MUST seguir reconociéndose cuando el color desaparece.
+
+Los estados de una celda MUST seguir distinguiéndose por su texto —las horas, la palabra completa para ausencia y para vacaciones—, y el color, cuando lo hay, MUST ser un refuerzo y nunca la única señal.
+
+#### Scenario: La cabecera y la columna de empleados se distinguen del contenido
+
+- **WHEN** el encargado exporta una semana con la plantilla dada de alta
+- **THEN** la cabecera de días se distingue de las filas de empleado
+- **AND** la columna de empleados se distingue de las siete columnas de día
+- **AND** los nombres de los días y de los empleados siguen leyéndose enteros
+
+#### Scenario: Las filas se siguen sin perder la línea
+
+- **WHEN** la plantilla tiene 20 empleados, varios con turnos los siete días
+- **AND** el encargado exporta esa semana
+- **THEN** al recorrer la fila de un empleado de lunes a domingo no se salta a la fila de al lado
+- **AND** las filas se distinguen entre sí sin depender de percibir el color
+
+#### Scenario: El documento impreso en blanco y negro sigue distinguiendo sus partes
+
+- **WHEN** el encargado imprime el documento en una impresora en blanco y negro
+- **THEN** la cabecera de días, la columna de empleados y las filas siguen distinguiéndose
+- **AND** una celda de ausencia sigue diciendo que es una ausencia y una de vacaciones que son vacaciones
+- **AND** ninguna hora queda ilegible sobre su fondo

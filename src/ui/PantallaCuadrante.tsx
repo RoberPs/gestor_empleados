@@ -10,6 +10,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import {
+  compartirElCuadrante,
+  MENSAJE_SIN_PLANTILLA,
+} from '../exportacion/compartirElCuadrante';
 import { formatearFecha, nombreDeDia, type Hora } from '../dominio/formatos';
 import {
   esLaMismaSemana,
@@ -23,7 +27,8 @@ import type { ContenidoCelda, Empleado, IdEmpleado, TurnoPlanificado } from '../
 import { CELDA_VACIA, PALABRA_AUSENCIA, PALABRA_VACACIONES } from '../dominio/tipos';
 import { describirTurno } from '../dominio/turno';
 import type { AccionCelda } from './accionesDeCelda';
-import { CabeceraSemana } from './CabeceraSemana';
+import { AvisoDeLaExportacion } from './AvisoDeLaExportacion';
+import { CabeceraSemana, NOMBRE_DEL_LOCAL } from './CabeceraSemana';
 import { ConfirmacionEliminar } from './ConfirmacionEliminar';
 import { EstadoVacio } from './EstadoVacio';
 import { FormularioTurno } from './FormularioTurno';
@@ -70,6 +75,8 @@ export function PantallaCuadrante({
   const [semanaMostrada, setSemanaMostrada] = useState<Semana>(semanaActual);
   const [celdaAbierta, setCeldaAbierta] = useState<CeldaAbierta | null>(null);
   const [dialogo, setDialogo] = useState<Dialogo | null>(null);
+  /** Lo que hay que decirle al encargado de la última exportación, si es que algo. */
+  const [avisoDeLaExportacion, setAvisoDeLaExportacion] = useState<string | null>(null);
 
   /**
    * La semana en curso se recalcula cada vez que la app vuelve a primer plano: si
@@ -156,6 +163,25 @@ export function PantallaCuadrante({
     cerrarDialogos();
   }
 
+  /**
+   * Comparte la semana que se está viendo.
+   *
+   * No navega a ninguna parte ni toca la semana mostrada: al terminar —o al desistir
+   * de la hoja del sistema, que no es un fallo— el encargado sigue exactamente donde
+   * estaba. Solo se le dice algo cuando la exportación no llega a completarse.
+   */
+  async function compartirLaSemana() {
+    const resultado = await compartirElCuadrante({
+      semana: semanaMostrada,
+      empleados,
+      contenido: contenidoDeLaSemana,
+      nombreDelLocal: NOMBRE_DEL_LOCAL,
+    });
+
+    if (resultado.tipo === 'fallo') setAvisoDeLaExportacion(resultado.mensaje);
+    else if (resultado.tipo === 'sin-plantilla') setAvisoDeLaExportacion(MENSAJE_SIN_PLANTILLA);
+  }
+
   function confirmarEliminacion() {
     if (!celdaAbierta || !dialogo) return;
     const { empleado, dia } = celdaAbierta;
@@ -188,6 +214,7 @@ export function PantallaCuadrante({
         onSemanaSiguiente={() => setSemanaMostrada(semanaSiguiente(semanaMostrada))}
         onVolverALaSemanaEnCurso={() => setSemanaMostrada(semanaActual)}
         onIrAEmpleados={onIrAEmpleados}
+        onCompartirLaSemana={compartirLaSemana}
       />
 
       <RejillaCuadrante
@@ -227,6 +254,11 @@ export function PantallaCuadrante({
         mensaje={mensajeDeConfirmacion(dialogo, contenidoDeLaCeldaAbierta)}
         onConfirmar={confirmarEliminacion}
         onDesistir={cerrarDialogos}
+      />
+
+      <AvisoDeLaExportacion
+        mensaje={avisoDeLaExportacion}
+        onCerrar={() => setAvisoDeLaExportacion(null)}
       />
     </View>
   );

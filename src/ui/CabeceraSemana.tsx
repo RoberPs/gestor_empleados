@@ -15,6 +15,20 @@
  * El rango de fechas está siempre visible, y cuando la semana mostrada es la
  * semana en curso se dice de forma explícita, para que el encargado no tenga que
  * contar fechas para saber si está en su semana.
+ *
+ * Compartir la semana es una acción **sobre la semana mostrada**, igual que ir a la
+ * anterior o a la siguiente, y por eso vive en la fila de navegación, entre las dos.
+ * Entra ahí y no en la fila de identidad porque esa fila mide ya lo que mide un
+ * botón —44 puntos— y admite un tercero sin crecer ni un punto: la rejilla no pierde
+ * ni una fila. La fila de identidad, en cambio, la marca un logo de 32 puntos y un
+ * botón la habría estirado.
+ *
+ * Va como **icono** y no como palabra por una razón medida en el móvil del encargado:
+ * con las tres palabras, a 360 puntos la fila se quedaba sin ancho y Android truncaba
+ * las tres —«Semana ant…», «Comp…», «Semana sigu…»—, que es exactamente lo que la
+ * rejilla lleva evitando desde el principio. El icono de compartir del sistema ocupa
+ * su cuadro pulsable de 44 puntos y devuelve a las dos acciones de navegación el
+ * ancho que necesitan para leerse enteras.
  */
 
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -22,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatearRangoDeSemana } from '../dominio/formatos';
 import type { Semana } from '../dominio/semana';
+import { IconoDeCompartir } from './IconoDeCompartir';
 import { LADO_PULSABLE_MINIMO } from './medidas';
 import { CIFRAS_TABULARES, colores, pesos, tipografia } from './tema';
 
@@ -48,6 +63,8 @@ interface Props {
   readonly onSemanaSiguiente: () => void;
   readonly onVolverALaSemanaEnCurso: () => void;
   readonly onIrAEmpleados: () => void;
+  /** Comparte la semana mostrada. Se ofrece en cualquier semana, pasada o futura. */
+  readonly onCompartirLaSemana: () => void;
 }
 
 export function CabeceraSemana({
@@ -57,6 +74,7 @@ export function CabeceraSemana({
   onSemanaSiguiente,
   onVolverALaSemanaEnCurso,
   onIrAEmpleados,
+  onCompartirLaSemana,
 }: Props) {
   const { top } = useSafeAreaInsets();
 
@@ -109,9 +127,29 @@ export function CabeceraSemana({
           accessibilityRole="button"
           accessibilityLabel="Semana anterior"
           onPress={onSemanaAnterior}
-          style={estilos.boton}
+          style={[estilos.boton, estilos.botonDeNavegacion]}
         >
-          <Text style={estilos.textoBoton}>Semana anterior</Text>
+          <Text style={estilos.textoBoton} numberOfLines={1}>
+            Semana anterior
+          </Text>
+        </Pressable>
+
+        {/*
+          Un solo toque, sin confirmación y sin preguntar de qué semana: es la que
+          se está viendo. Se ofrece igual en una semana pasada que en una futura.
+
+          Sin palabra al lado: es el icono de compartir del propio sistema, el mismo
+          que el encargado toca a diario en la galería y en el navegador. Quien
+          navega con el lector de pantalla oye su etiqueta entera.
+        */}
+        <Pressable
+          testID="accion-compartir-la-semana"
+          accessibilityRole="button"
+          accessibilityLabel="Compartir la semana"
+          onPress={onCompartirLaSemana}
+          style={[estilos.boton, estilos.botonDeCompartir]}
+        >
+          <IconoDeCompartir testID="icono-de-compartir" color={colores.accion} />
         </Pressable>
 
         <Pressable
@@ -119,9 +157,11 @@ export function CabeceraSemana({
           accessibilityRole="button"
           accessibilityLabel="Semana siguiente"
           onPress={onSemanaSiguiente}
-          style={estilos.boton}
+          style={[estilos.boton, estilos.botonDeNavegacion]}
         >
-          <Text style={estilos.textoBoton}>Semana siguiente</Text>
+          <Text style={estilos.textoBoton} numberOfLines={1}>
+            Semana siguiente
+          </Text>
         </Pressable>
       </View>
 
@@ -183,6 +223,22 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  /**
+   * Los dos botones de navegación se encogen antes que desbordar, y su texto va a
+   * una línea: la fila mide siempre lo que mide un botón, así que la acción de
+   * compartir no le ha quitado ni un punto de alto a la rejilla.
+   */
+  botonDeNavegacion: {
+    flexShrink: 1,
+  },
+  /**
+   * El de compartir no se encoge: es un cuadro de icono y ya está en su tamaño
+   * mínimo. Los que ceden ancho son los de texto, que es lo que sobra en ellos.
+   */
+  botonDeCompartir: {
+    flexShrink: 0,
+    alignItems: 'center',
   },
   filaInferior: {
     flexDirection: 'row',

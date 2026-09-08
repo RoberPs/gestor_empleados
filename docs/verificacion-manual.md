@@ -578,3 +578,123 @@ código ya está en `src/ui/__tests__/identidadVisual.test.tsx`.
   de cada pantalla, y no se ha tocado ninguna de esas expectativas—; lo que queda
   para el ojo es que tampoco haya cambiado nada en pantalla que ningún test mire.
 - **Última comprobación**: pendiente.
+
+## Escenarios de la exportación del cuadrante
+
+> El documento se compone en `src/exportacion/documentoDelCuadrante.ts` y esa parte
+> —qué filas, qué columnas, qué dice cada celda y, sobre todo, qué **no** aparece—
+> se comprueba entera en `npm test`, sobre el HTML completo. Lo que ningún test
+> alcanza es el papel: si la tabla cabe, si se lee y si el PDF llega abrible a quien
+> lo recibe. Eso es lo que se anota aquí.
+
+### Se recarga la app con `expo-print` y `expo-sharing` dentro
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: (no es un escenario de spec: es la comprobación de que las dos
+  dependencias nativas nuevas no rompen nada, previa a escribir la exportación)
+- **Cómo se comprueba**: con `expo-print`, `expo-sharing` y `expo-file-system` ya
+  instalados, parar el servidor de desarrollo, volver a lanzarlo con `npx expo start
+  --clear` y abrir la app en Expo Go.
+- **Qué se debe observar**: la app arranca sin pantalla de error, se ve el cuadrante
+  de la semana en curso con su plantilla, y navegar entre semanas y editar una celda
+  siguen funcionando igual que antes.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**.
+
+### Exportar una semana con 20 empleados
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento es legible con la plantilla completa
+- **Cómo se comprueba**: con los 20 empleados dados de alta y varios con turnos los
+  siete días —alguno con dos turnos el mismo día—, tocar `Compartir`, elegir
+  «Guardar» o abrir el PDF desde la hoja del sistema, y mirarlo entero. Después
+  imprimirlo, o verlo en escala de grises.
+- **Qué se debe observar**: el documento incluye las 20 filas y las siete columnas de
+  lunes a domingo. Todas las horas se leen completas, en `hh:mm`, sin cortes,
+  truncados ni abreviaturas. Si la tabla se parte en dos páginas, la cabecera de días
+  se repite en la segunda. En blanco y negro se distinguen igual las horas, la
+  palabra `Ausencia` y la palabra `Vacaciones`: ningún estado depende de un fondo de
+  color.
+- **Por qué está aquí**: la suite comprueba que las 20 filas y las siete columnas
+  están en el HTML, pero si caben en la hoja y si se leen impresas no se ve más que
+  abriendo el PDF.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado —
+  **correcto**. Se exportó la semana con la plantilla completa, se abrió el PDF y se
+  mandó por mensajería; quien lo recibió lo abrió y lo leyó. Las 20 filas y las siete
+  columnas caben y las horas se leen enteras.
+
+### Un nombre largo se lee entero en el documento
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento es legible con la plantilla completa
+- **Cómo se comprueba**: dar de alta a `Maricarmen de la Fuente Etxebarria`, exportar
+  la semana y mirar su fila en el PDF.
+- **Qué se debe observar**: el nombre aparece completo, sin puntos suspensivos ni
+  ninguna otra marca de recorte. Si no cabe en una línea, parte de línea dentro de su
+  celda —la fila crece— pero no pierde ni una letra. En la rejilla de la pantalla ese
+  mismo nombre sí se trunca, y es correcto: el papel tiene más sitio.
+- **Por qué está aquí**: la suite comprueba que el nombre entero está en el HTML; que
+  no lo recorte la maquetación solo se ve en el PDF.
+- **Última comprobación**: pendiente.
+
+### Compartir la semana exportada
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento se entrega por la hoja de compartir del sistema
+- **Cómo se comprueba**: tocar `Compartir` en el cuadrante y recorrer el camino
+  entero: elegir la app de mensajería del grupo del local, enviarlo, y pedir a quien
+  lo reciba que lo abra. Repetir eligiendo «Imprimir» y «Guardar».
+- **Qué se debe observar**: se abre la hoja de compartir del propio móvil, la misma
+  que para cualquier otro fichero, con el PDF dentro y con el rango de la semana en
+  el nombre del fichero (`Cuadrante 14-09-2026 a 20-09-2026.pdf`). Desde ella se
+  puede enviar, guardar o imprimir. Quien lo recibe lo abre y lo lee sin instalar
+  nada. Al cerrar la hoja sin elegir nada, la app vuelve al cuadrante en la misma
+  semana y no muestra ningún error.
+- **Por qué está aquí**: `expo-print` y `expo-sharing` no existen fuera del
+  dispositivo. La suite comprueba que se pregunta por la hoja antes de producir el
+  PDF, que desistir no es un fallo y que un fallo no enseña nada técnico; que la hoja
+  se abra de verdad y que el PDF llegue abrible, solo se ve en el móvil.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**. La hoja de
+  compartir se abre y el PDF llega abrible. Para llegar aquí hubo que resolver dos
+  cierres del sistema —el PDF que escribe `expo-print` queda fuera de la carpeta de
+  la app y no se puede ni leer ni mover desde ella—; la salida está en el `design.md`
+  del change, en la decisión del nombre del fichero.
+
+### El PDF recibido no lleva ningún dato de contacto
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento exportado no contiene datos de contacto
+- **Cómo se comprueba**: rellenar teléfono, email, nota y motivo de la ausencia de
+  **todos** los empleados de la plantilla, marcar alguna ausencia, exportar la semana
+  y mandarse el PDF a uno mismo. Abrirlo en el móvil que lo recibe y buscar dentro
+  del texto del documento cada uno de esos cuatro datos.
+- **Qué se debe observar**: de cada empleado aparece únicamente su nombre. Ni un
+  teléfono, ni un email, ni una nota, ni el motivo de ninguna ausencia: la celda de
+  una ausencia dice `Ausencia` y nada más.
+- **Por qué está aquí**: la suite ya lo comprueba sobre el HTML completo, y es la
+  comprobación que no puede fallar. Se repite en el PDF recibido porque es el único
+  sitio donde se ve lo que de verdad sale del dispositivo, y porque es la que cierra
+  el change: si falla, no se comparte nada más hasta arreglarlo.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**. En el PDF
+  recibido aparece solo el nombre de cada empleado: ningún teléfono, ningún email,
+  ninguna nota y ningún motivo de ausencia.
+
+### El documento impreso en blanco y negro sigue distinguiendo sus partes
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento distingue sus partes de un vistazo
+- **Cómo se comprueba**: exportar una semana con la plantilla completa, alguna
+  ausencia y alguna semana de vacaciones, e imprimir el PDF en una impresora en
+  blanco y negro (o pedir en el diálogo de impresión «escala de grises»). Mirar la
+  hoja impresa a un brazo de distancia.
+- **Qué se debe observar**: la cabecera de días sigue siendo la franja más oscura y
+  su texto se lee en blanco sobre ella. La columna de empleados se distingue de las
+  siete columnas de día. Las bandas alternas de las filas se ven como dos grises
+  distintos y permiten seguir la semana de un empleado sin irse a la fila de al lado.
+  Una celda de ausencia sigue diciendo `Ausencia` y una de vacaciones `Vacaciones`:
+  el fondo es un refuerzo, y sin él la celda informa igual. Ninguna hora queda
+  ilegible sobre su fondo.
+- **Por qué está aquí**: la suite comprueba que ningún fondo es oscuro salvo el de la
+  cabecera y que los fondos se separan lo bastante en claridad como para no
+  confundirse en gris. Cómo sale eso de una impresora concreta, con su tóner y su
+  papel, solo se ve imprimiendo.
+- **Última comprobación**: pendiente.

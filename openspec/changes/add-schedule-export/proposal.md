@@ -34,7 +34,7 @@ Decisiones tomadas el 08/09/2026:
 
 ## Impact
 
-- **Dependencias**: dos nuevas, `expo-print` y `expo-sharing`. Las dos están fijadas en el contexto del proyecto para este uso, así que no se renegocia el stack; es la primera vez que se instalan.
+- **Dependencias**: dos nuevas, `expo-print` y `expo-sharing`. Las dos están fijadas en el contexto del proyecto para este uso, así que no se renegocia el stack; es la primera vez que se instalan. Al implementarlo apareció una tercera, `expo-file-system`, que ya venía instalada con `expo` y ahora se declara. Resultó **imprescindible**, y no un adorno: las dos primeras no encajan solas. `expo-print` deja el PDF en una carpeta de trabajo suya que queda fuera de la carpeta de la app, y a ese fichero no llega nadie más: ni la hoja de compartir puede leerlo ni el sistema de ficheros puede moverlo (comprobado en el móvil del encargado el 08/09/2026). `expo-file-system` es lo que escribe el PDF —recogido en base64 del motor de impresión— dentro de la caché de la app, de paso con el nombre de la semana. No se usa para nada más —ni se lee ni se escribe ningún otro fichero— y no la toca la capa de datos.
 - **Datos**: ninguno nuevo. La exportación solo lee lo que ya está guardado y no escribe nada en el almacenamiento.
 - **Código**: un módulo nuevo que compone el documento a partir de la semana y la plantilla, y la acción en `src/ui/CabeceraSemana.tsx`.
 - **Privacidad**: es el primer camino por el que un dato sale del dispositivo. Lo que el documento incluye y lo que no es una regla de la spec, no un detalle de maquetación.
