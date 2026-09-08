@@ -1,0 +1,8 @@
+schema: spec-driven
+created: 2026-09-08
+# `ajustes-del-local` se queda sin ningún requisito: con el nombre del local fijado
+# en el código y la pantalla de ajustes retirada, la capability no tiene objeto. Su
+# único requisito que sobrevive —que la pantalla de inicio identifique el local— se
+# muda a `cuadrante-semanal`, que es donde se dibuja esa cabecera. Sin esto, el
+# archivado se niega a borrar la spec de una capability que se queda vacía.
+retire_capabilities: true

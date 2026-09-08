@@ -10,9 +10,9 @@ siguientes.
 
 ### Requirement: La plantilla sobrevive al cierre de la app
 
-Los datos de la ficha de un empleado —nombre, teléfono, email y nota— MUST conservarse en el
-dispositivo cuando la app se cierra, y MUST volver a estar disponibles tal cual al abrirla de
-nuevo.
+Los datos de la ficha de un empleado —nombre, puesto, teléfono, email, nota y motivo de la
+ausencia— MUST conservarse en el dispositivo cuando la app se cierra, y MUST volver a estar
+disponibles tal cual al abrirla de nuevo.
 
 Esa conservación MUST NOT depender de que el encargado guarde nada a mano, cierre la app de
 ninguna forma concreta ni la deje abierta: un dato queda conservado en cuanto la escritura que
@@ -29,6 +29,14 @@ la app.
 - **THEN** la plantilla incluye a `Bruno`
 - **AND** su teléfono es `600 11 22 33`, su email es `bruno@ejemplo.es` y su nota es
   `No puede los martes por la tarde`
+
+#### Scenario: El puesto y el motivo de la ausencia sobreviven al cierre
+
+- **WHEN** el encargado escribe el puesto `Cocina` y el motivo de la ausencia
+  `Baja médica hasta el 20/09/2026` en la ficha de `Bruno`
+- **AND** cierra la app por completo y la vuelve a abrir
+- **THEN** el puesto de `Bruno` es `Cocina`
+- **AND** su motivo de la ausencia es `Baja médica hasta el 20/09/2026`
 
 #### Scenario: La plantilla entera sobrevive a varias reaperturas
 
@@ -78,9 +86,13 @@ Cuando el almacenamiento que hay en el dispositivo corresponde a una versión an
 app, el sistema MUST adaptarlo al arrancar, de forma automática y antes de atender ninguna
 lectura o escritura.
 
-Esa adaptación MUST conservar los datos que ya había: los empleados dados de alta y el
-contenido de sus fichas MUST seguir estando después, sin que el encargado tenga que volver a
-introducirlos.
+Esa adaptación MUST conservar los datos que ya había: los empleados dados de alta, el
+contenido de sus fichas y el contenido del cuadrante MUST seguir estando después, sin que el
+encargado tenga que volver a introducirlos.
+
+Una adaptación MUST poder retirar del almacenamiento datos que la app ha dejado de usar. Al
+hacerlo MUST retirar únicamente esos, y MUST NOT tocar la plantilla, las fichas ni el
+cuadrante. El encargado MUST NOT perder por ello ningún dato que la app le siga mostrando.
 
 El sistema MUST NOT pedir al encargado que autorice la adaptación, MUST NOT ofrecerle
 saltársela y MUST NOT mostrarle ningún detalle técnico sobre ella.
@@ -100,6 +112,16 @@ puede abrirse.
 - **THEN** el sistema adapta el almacenamiento sin pedirle nada
 - **AND** la plantilla sigue siendo `Ana`, `Bruno` y `Carmen`
 - **AND** sus teléfonos, emails y notas siguen siendo los mismos
+
+#### Scenario: Una adaptación que retira datos no toca la plantilla
+
+- **WHEN** el encargado tiene a `Ana`, `Bruno` y `Carmen` con sus fichas rellenas y un
+  cuadrante con turnos planificados, ausencias y vacaciones
+- **AND** instala una versión de la app que ha dejado de usar parte de lo guardado
+- **AND** la abre
+- **THEN** la plantilla sigue siendo `Ana`, `Bruno` y `Carmen` con sus fichas intactas
+- **AND** el cuadrante conserva todos sus turnos planificados, ausencias y vacaciones
+- **AND** el encargado no ve ningún aviso ni tiene que hacer nada
 
 #### Scenario: Arrancar dos veces seguidas no vuelve a adaptar nada
 
@@ -195,12 +217,18 @@ sistema MUST NOT guardar un alta ni una edición que deje a dos empleados con el
 bajo esa comparación. Corregir solo las mayúsculas o los espacios del nombre de un empleado
 MUST NOT contar como nombre repetido consigo mismo.
 
-El teléfono, el email y la nota MUST ser opcionales: un empleado con nombre a secas MUST poder
-guardarse, y cada uno de esos tres campos MUST poder vaciarse después sin afectar a los demás.
+El puesto, el teléfono, el email, la nota y el motivo de la ausencia MUST ser opcionales: un
+empleado con nombre a secas MUST poder guardarse, y cada uno de esos cinco campos MUST poder
+vaciarse después sin afectar a los demás.
 
-El nombre, el teléfono y el email MUST guardarse tal y como se teclean, sin los espacios
-sobrantes del principio y del final. El sistema MUST NOT rechazar ningún formato de teléfono
-ni de email, y MUST NOT imponer ninguna longitud máxima a la nota.
+El puesto y el motivo de la ausencia MUST ser texto libre. El sistema MUST NOT restringirlos a
+un conjunto cerrado de valores, MUST NOT imponerles ningún formato y MUST NOT exigir que el
+puesto sea distinto entre empleados: dos personas pueden compartir puesto.
+
+El nombre, el puesto, el teléfono y el email MUST guardarse tal y como se teclean, sin los
+espacios sobrantes del principio y del final. El sistema MUST NOT rechazar ningún formato de
+teléfono ni de email, y MUST NOT imponer ninguna longitud máxima a la nota ni al motivo de la
+ausencia.
 
 Cuando el sistema rechaza una escritura por incumplir estas reglas, MUST decir cuál de las dos
 condiciones del nombre no se cumple —vacío o repetido—, para que la pantalla pueda explicarlo
@@ -208,10 +236,10 @@ al encargado.
 
 #### Scenario: Guardar un empleado solo con nombre
 
-- **WHEN** el encargado da de alta a `Carmen` sin teléfono, sin email y sin nota
+- **WHEN** el encargado da de alta a `Carmen` sin puesto, sin teléfono, sin email y sin nota
 - **THEN** el sistema la guarda
-- **AND** la lectura siguiente de su ficha devuelve el nombre `Carmen` y el teléfono, el email
-  y la nota vacíos
+- **AND** la lectura siguiente de su ficha devuelve el nombre `Carmen` y el puesto, el teléfono,
+  el email, la nota y el motivo de la ausencia vacíos
 
 #### Scenario: Un empleado sin nombre no se guarda
 
@@ -251,6 +279,26 @@ al encargado.
 - **AND** el encargado deja su email vacío
 - **THEN** la lectura siguiente de su ficha devuelve el email vacío
 - **AND** su nombre, su teléfono y su nota no han cambiado
+
+#### Scenario: Dos empleados con el mismo puesto se guardan
+
+- **WHEN** la plantilla incluye a `Ana` con el puesto `Barra`
+- **AND** se da de alta a `Bruno` con el puesto `Barra`
+- **THEN** el sistema lo guarda
+- **AND** la lectura siguiente devuelve a los dos con el puesto `Barra`
+
+#### Scenario: El puesto se guarda sin los espacios de los extremos
+
+- **WHEN** el encargado escribe ` Jefe de cocina ` como puesto de `Bruno`
+- **THEN** la lectura siguiente de su ficha devuelve el puesto `Jefe de cocina`
+
+#### Scenario: Vaciar el puesto de un empleado
+
+- **WHEN** `Ana` tiene el puesto `Barra`
+- **AND** el encargado deja su puesto vacío
+- **THEN** la lectura siguiente de su ficha devuelve el puesto vacío
+- **AND** su nombre, su teléfono, su email, su nota y su motivo de la ausencia no han
+  cambiado
 
 ### Requirement: La baja de un empleado es un borrado definitivo
 

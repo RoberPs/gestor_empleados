@@ -46,7 +46,7 @@ La pantalla MUST identificar en todo momento qué semana se está mostrando, ind
 
 Cuando la semana mostrada es la semana en curso, la pantalla MUST indicarlo de forma explícita, de manera que el encargado distinga sin contar fechas si está mirando su semana o se ha desplazado a otra.
 
-La identidad del local que define `ajustes-del-local` MUST mostrarse por encima del rango de fechas, y MUST NOT confundirse con él: el nombre del local y el rango de la semana MUST leerse como dos cosas distintas, no como un único título.
+La identidad del local MUST mostrarse por encima del rango de fechas, y MUST NOT confundirse con él: el nombre del local y el rango de la semana MUST leerse como dos cosas distintas, no como un único título.
 
 #### Scenario: Rango de fechas de la semana visible
 
@@ -65,29 +65,6 @@ La identidad del local que define `ajustes-del-local` MUST mostrarse por encima 
 - **WHEN** el nombre del local es `La Esquina café` y el cuadrante muestra la semana `07/09/2026 - 13/09/2026`
 - **THEN** el nombre del local se muestra por encima del rango de fechas
 - **AND** los dos se distinguen a simple vista como dos datos distintos
-
-### Requirement: Acceso a los ajustes desde el cuadrante
-
-La pantalla del cuadrante MUST ofrecer un acceso permanente a la pantalla de ajustes del local, alcanzable con un solo toque.
-
-Al volver de los ajustes, el sistema MUST devolver al encargado al cuadrante en la misma semana en la que estaba, con el nombre del local ya actualizado si lo ha cambiado.
-
-Ese acceso MUST NOT ofrecerse en el estado vacío sin empleados dados de alta: allí lo único que hace falta es dar de alta al primero.
-
-#### Scenario: Ir a los ajustes y volver al cuadrante
-
-- **WHEN** el encargado se ha desplazado a la semana `14/09/2026 - 20/09/2026`
-- **AND** toca el acceso a los ajustes
-- **THEN** se abre la pantalla de ajustes del local
-- **WHEN** cambia el nombre del local y vuelve
-- **THEN** ve de nuevo el cuadrante en la semana `14/09/2026 - 20/09/2026`
-- **AND** la cabecera muestra el nombre nuevo
-
-#### Scenario: El estado vacío no ofrece los ajustes
-
-- **WHEN** el encargado abre la app y no hay ningún empleado dado de alta
-- **THEN** se le ofrece dar de alta al primer empleado
-- **AND** no se le ofrece el acceso a los ajustes
 
 ### Requirement: Navegación entre semanas
 
@@ -133,6 +110,8 @@ La fila del empleado MUST mostrar únicamente su nombre. La pantalla MUST NOT mo
 
 Cuando el nombre del empleado no cabe en su columna, el sistema MUST mostrarlo truncado con puntos suspensivos. El sistema MUST NOT reducir por ello el ancho de las columnas de día.
 
+El nombre de la fila MUST ser pulsable y MUST abrir la ficha de ese empleado, para que el encargado pueda leer entero un nombre que la rejilla trunca y consultar sus datos sin pasar por el panel. Al volver de la ficha, el cuadrante MUST mostrarse en la misma semana en la que estaba.
+
 #### Scenario: La semana completa se ve sin scroll horizontal
 
 - **WHEN** el encargado abre el cuadrante en su móvil en orientación vertical
@@ -150,6 +129,20 @@ Cuando el nombre del empleado no cabe en su columna, el sistema MUST mostrarlo t
 - **WHEN** la plantilla incluye a un empleado cuyo nombre no cabe en la columna de nombres
 - **THEN** su nombre se muestra truncado con puntos suspensivos
 - **AND** las siete columnas de día conservan su ancho
+
+#### Scenario: Abrir la ficha desde el nombre de la fila
+
+- **WHEN** el encargado se ha desplazado a la semana `14/09/2026 - 20/09/2026`
+- **AND** toca el nombre de Bruno en la columna de nombres
+- **THEN** se abre la ficha de Bruno
+- **WHEN** toca la acción de volver
+- **THEN** ve de nuevo el cuadrante en la semana `14/09/2026 - 20/09/2026`
+
+#### Scenario: Un nombre truncado se lee entero abriendo su ficha
+
+- **WHEN** la rejilla muestra truncado el nombre de `Maricarmen de la Fuente Etxebarria`
+- **AND** el encargado toca ese nombre
+- **THEN** se abre su ficha, que muestra el nombre completo
 
 #### Scenario: Un empleado borrado desaparece también de las semanas pasadas
 
@@ -276,7 +269,10 @@ Las acciones ofrecidas MUST depender del estado de la celda:
 - Sobre una celda vacía, el sistema MUST ofrecer: crear turno planificado, marcar ausencia y marcar vacaciones.
 - Sobre una celda con un turno planificado, el sistema MUST ofrecer: editar ese turno, añadir un segundo turno ese mismo día, sustituir el contenido por ausencia, sustituirlo por vacaciones y eliminar el turno.
 - Sobre una celda con dos turnos planificados, el sistema MUST ofrecer: editar cada uno de los dos por separado, eliminar cada uno de los dos por separado, sustituir el contenido por ausencia y sustituirlo por vacaciones. El sistema MUST NOT ofrecer añadir un tercer turno.
-- Sobre una celda con ausencia o con vacaciones, el sistema MUST ofrecer: cambiar a la otra de las dos, sustituirla por un turno planificado y eliminarla.
+- Sobre una celda con ausencia, el sistema MUST ofrecer: ver la ausencia, cambiarla a vacaciones, sustituirla por un turno planificado y eliminarla.
+- Sobre una celda con vacaciones, el sistema MUST ofrecer: cambiarlas a ausencia, sustituirlas por un turno planificado y eliminarlas.
+
+Ver la ausencia MUST llevar a la ficha del empleado de esa celda, donde vive el motivo de la ausencia. El sistema MUST NOT mostrar el motivo dentro de la celda ni dentro de las acciones: la rejilla sigue mostrando la ausencia como una etiqueta y nada más. Esa acción MUST ofrecerse tenga o no tenga escrito un motivo ese empleado.
 
 Al terminar o cancelar la acción, el encargado MUST volver al cuadrante en la misma semana desde la que la inició, con la celda ya actualizada si hubo cambio.
 
@@ -395,6 +391,30 @@ Eliminar un turno planificado, una ausencia o unas vacaciones MUST requerir una 
 - **THEN** vuelve al cuadrante mostrando la semana siguiente, no la semana en curso
 - **AND** el turno planificado aparece en la celda de esa semana
 
+#### Scenario: Ver la ausencia desde la celda
+
+- **WHEN** la celda de Bruno del martes está marcada como ausencia
+- **AND** el encargado toca esa celda
+- **THEN** entre las acciones ofrecidas está ver la ausencia
+- **WHEN** la elige
+- **THEN** se abre la ficha de Bruno, donde puede leer y escribir el motivo de la ausencia
+- **WHEN** toca la acción de volver
+- **THEN** ve de nuevo el cuadrante en la misma semana
+
+#### Scenario: La celda de ausencia no muestra el motivo
+
+- **WHEN** Bruno tiene escrito el motivo `Baja médica` y su celda del martes está marcada como ausencia
+- **THEN** la celda muestra únicamente la etiqueta de ausencia
+- **AND** no muestra el motivo ni ninguna marca de que lo tenga escrito
+
+#### Scenario: Ver la ausencia de quien no tiene motivo escrito
+
+- **WHEN** Carmen no tiene ningún motivo escrito y su celda del jueves está marcada como ausencia
+- **AND** el encargado toca esa celda
+- **THEN** se le ofrece igualmente ver la ausencia
+- **WHEN** la elige
+- **THEN** se abre la ficha de Carmen con el campo del motivo vacío y listo para escribir
+
 ### Requirement: Acceso al panel de empleados desde el cuadrante
 
 La pantalla del cuadrante MUST ofrecer un acceso permanente al panel de empleados, alcanzable con un solo toque desde la rejilla.
@@ -458,3 +478,31 @@ La pantalla MUST NOT mostrar textos que valoren el cumplimiento de límites de j
 - **WHEN** un empleado tiene turnos planificados los siete días de la semana
 - **THEN** el cuadrante los muestra tal cual
 - **AND** no aparece ningún aviso, advertencia ni mensaje sobre límites de jornada o descansos
+
+### Requirement: La pantalla de inicio identifica el local
+
+La pantalla del cuadrante MUST mostrar de forma permanente la identidad del local: su logo y su nombre.
+
+El nombre y el logo del local MUST ser siempre los mismos y MUST venir con la app. El sistema MUST NOT ofrecer cambiarlos desde la interfaz, MUST NOT pedir acceso a las fotos del dispositivo y MUST NOT guardarlos en el almacenamiento del dispositivo.
+
+La identidad del local MUST NOT robarle sitio a la rejilla: con la plantilla completa, el cuadrante MUST seguir mostrando los siete días sin scroll horizontal y las mismas filas de empleado que mostraba antes de existir la cabecera de identidad.
+
+El nombre del local MUST mostrarse completo cuando quepa y truncado con puntos suspensivos cuando no, en una sola línea. El sistema MUST NOT reducir por ello el ancho ni el alto de la rejilla.
+
+#### Scenario: Abrir la app con el nombre del local ya escrito
+
+- **WHEN** el encargado abre la app
+- **THEN** la pantalla del cuadrante muestra el logo y el nombre `La Esquina café`
+- **AND** debajo sigue viéndose el rango de la semana, la navegación entre semanas y la rejilla
+
+#### Scenario: La identidad del local no le quita sitio a la rejilla
+
+- **WHEN** el encargado abre la app con 20 empleados dados de alta, en la anchura mínima soportada
+- **THEN** las siete columnas de día siguen viéndose a la vez, sin scroll horizontal
+- **AND** se ven tantas filas de empleado como antes de existir la cabecera de identidad
+
+#### Scenario: La app no ofrece cambiar el nombre ni el logo
+
+- **WHEN** el encargado recorre el cuadrante, el panel de empleados y una ficha
+- **THEN** en ninguna pantalla se le ofrece editar el nombre del local ni cambiar su logo
+- **AND** no existe ninguna pantalla de ajustes
