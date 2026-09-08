@@ -70,8 +70,32 @@ const CREAR_PLANTILLA: Migracion = {
   },
 };
 
+/**
+ * Versión 2: los ajustes del local.
+ *
+ * Una tabla de clave y valor, no una columna por ajuste: cada ajuste nuevo sería si
+ * no un `ALTER TABLE` en una migración más, y este fichero ya explica lo caro que
+ * sale equivocarse ahí. Que no haya fila para una clave significa que nunca se ha
+ * escrito, que es justo lo que la spec pide para la primera apertura: el nombre del
+ * local vacío, sin ningún nombre de ejemplo.
+ *
+ * No lleva clave ajena a `empleados` porque no se refiere a ningún empleado: son
+ * datos del propio negocio, y sobreviven a la baja de toda la plantilla.
+ */
+const CREAR_AJUSTES: Migracion = {
+  descripcion: 'Crea la tabla de ajustes del local',
+  aplicar(bd) {
+    bd.ejecutar(`
+      CREATE TABLE ajustes (
+        clave TEXT PRIMARY KEY,
+        valor TEXT NOT NULL
+      )
+    `);
+  },
+};
+
 /** En orden. Nunca se reordena, nunca se quita ninguna: solo se añade al final. */
-export const MIGRACIONES: readonly Migracion[] = [CREAR_PLANTILLA];
+export const MIGRACIONES: readonly Migracion[] = [CREAR_PLANTILLA, CREAR_AJUSTES];
 
 /** La versión de esquema que esta versión de la app sabe leer. */
 export const VERSION_DEL_ESQUEMA = MIGRACIONES.length;

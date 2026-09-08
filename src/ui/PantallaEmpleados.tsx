@@ -17,11 +17,12 @@
 
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { IdEmpleado } from '../dominio/tipos';
 import { FormularioAltaEmpleado } from './FormularioAltaEmpleado';
 import { ANCHO_MINIMO_SOPORTADO, LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { colores, pesos, tipografia } from './tema';
 import { usarAlmacen } from './usarAlmacen';
 
 export const MENSAJE_PLANTILLA_VACIA = 'Todavía no hay empleados en la plantilla.';
@@ -36,6 +37,9 @@ interface Props {
 export function PantallaEmpleados({ onAbrirFicha, onVolver }: Props) {
   const datos = usarAlmacen();
   const [dandoDeAlta, setDandoDeAlta] = useState(false);
+  // Las acciones de alta y de volver son lo último de la pantalla: sin este aire,
+  // la barra de navegación del móvil las tapa y dejan de poder tocarse.
+  const { bottom } = useSafeAreaInsets();
 
   // La plantilla se relee del almacén en cada repintado: la pantalla no guarda
   // copia propia. `listarEmpleados` ya la devuelve en orden alfabético español.
@@ -47,7 +51,7 @@ export function PantallaEmpleados({ onAbrirFicha, onVolver }: Props) {
   }
 
   return (
-    <View testID="pantalla-empleados" style={estilos.pantalla}>
+    <View testID="pantalla-empleados" style={[estilos.pantalla, { paddingBottom: 12 + bottom }]}>
       {empleados.length === 0 ? (
         // Sin plantilla no se muestra una lista vacía sin explicación: se dice qué
         // pasa y se ofrece el camino para salir de ahí.
@@ -142,11 +146,14 @@ const estilos = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     paddingHorizontal: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colores.borde,
+    borderBottomWidth: 1,
+    borderBottomColor: colores.lineaRejilla,
   },
   nombre: {
+    // Mismo color y mismo peso que el nombre en la rejilla del cuadrante; aquí
+    // va al cuerpo de la app porque es el contenido de una fila que se toca.
     fontSize: tipografia.cuerpo,
+    fontWeight: pesos.medium,
     color: colores.texto,
   },
   plantillaVacia: {
@@ -158,6 +165,7 @@ const estilos = StyleSheet.create({
   },
   mensajeVacio: {
     fontSize: tipografia.titulo,
+    fontWeight: pesos.bold,
     color: colores.texto,
     textAlign: 'center',
   },
@@ -167,11 +175,12 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
 });

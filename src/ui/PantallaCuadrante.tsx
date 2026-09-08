@@ -52,12 +52,15 @@ export interface PropsPantallaCuadrante {
   readonly anchoDePantalla?: number;
   /** Navegación al panel de empleados. */
   readonly onIrAEmpleados?: () => void;
+  /** Navegación a los ajustes del local. */
+  readonly onIrAAjustes?: () => void;
 }
 
 export function PantallaCuadrante({
   reloj = () => new Date(),
   anchoDePantalla,
   onIrAEmpleados = () => {},
+  onIrAAjustes = () => {},
 }: PropsPantallaCuadrante) {
   const datos = usarAlmacen();
   const { width } = useWindowDimensions();
@@ -91,6 +94,7 @@ export function PantallaCuadrante({
   // repintado: la pantalla no guarda copia propia de ninguno de los dos.
   const empleados = datos.listarEmpleados();
   const contenidoDeLaSemana = datos.leerSemana(semanaMostrada);
+  const nombreDelLocal = datos.leerNombreDelLocal();
 
   const cerrarDialogos = useCallback(() => {
     setDialogo(null);
@@ -178,6 +182,8 @@ export function PantallaCuadrante({
         onSemanaSiguiente={() => setSemanaMostrada(semanaSiguiente(semanaMostrada))}
         onVolverALaSemanaEnCurso={() => setSemanaMostrada(semanaActual)}
         onIrAEmpleados={onIrAEmpleados}
+        onIrAAjustes={onIrAAjustes}
+        nombreDelLocal={nombreDelLocal}
       />
 
       <RejillaCuadrante

@@ -7,16 +7,19 @@
  */
 
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { colores, pesos, tipografia } from './tema';
 
 export const MENSAJE_SIN_EMPLEADOS = 'Todavía no hay empleados en la plantilla.';
 export const ACCION_DAR_DE_ALTA = 'Dar de alta al primer empleado';
 
 export function EstadoVacio({ onIrAEmpleados }: { readonly onIrAEmpleados: () => void }) {
+  const { bottom } = useSafeAreaInsets();
+
   return (
-    <View testID="estado-vacio" style={estilos.contenedor}>
+    <View testID="estado-vacio" style={[estilos.contenedor, { paddingBottom: 24 + bottom }]}>
       <Text style={estilos.mensaje}>{MENSAJE_SIN_EMPLEADOS}</Text>
       <Pressable
         testID="accion-dar-de-alta-primer-empleado"
@@ -41,6 +44,7 @@ const estilos = StyleSheet.create({
   },
   mensaje: {
     fontSize: tipografia.titulo,
+    fontWeight: pesos.bold,
     color: colores.texto,
     textAlign: 'center',
   },
@@ -49,11 +53,12 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
 });

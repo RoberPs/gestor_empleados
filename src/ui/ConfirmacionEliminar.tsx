@@ -9,7 +9,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { colores, pesos, tipografia } from './tema';
 
 interface Props {
   readonly visible: boolean;
@@ -98,15 +98,17 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   botonDestructivo: {
     backgroundColor: colores.fondoAccionDestructiva,
+    borderColor: colores.textoAccionDestructiva,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
   textoBotonDestructivo: {
     color: colores.textoAccionDestructiva,

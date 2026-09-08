@@ -13,7 +13,7 @@ import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { analizarHora, formatearHora, type Hora } from '../dominio/formatos';
 import { MOTIVO_DURACION_NULA, sePuedeGuardar } from '../dominio/turno';
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { CIFRAS_TABULARES, colores, pesos, tipografia } from './tema';
 
 export const MOTIVO_HORA_ILEGIBLE =
   'Escribe las horas del día en 24h. Valen 09:30, 9:30, 9.30 o 930; también 9 para las nueve en punto.';
@@ -138,7 +138,7 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     fontSize: tipografia.titulo,
-    fontWeight: '700',
+    fontWeight: pesos.bold,
     color: colores.texto,
     marginBottom: 8,
   },
@@ -149,11 +149,12 @@ const estilos = StyleSheet.create({
   campo: {
     minHeight: LADO_PULSABLE_MINIMO,
     borderWidth: 1,
-    borderColor: colores.borde,
+    borderColor: colores.lineaRejilla,
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: tipografia.titulo,
     color: colores.texto,
+    fontVariant: CIFRAS_TABULARES,
     marginBottom: 8,
   },
   motivo: {
@@ -172,11 +173,12 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
 });

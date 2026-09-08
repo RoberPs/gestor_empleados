@@ -11,5 +11,10 @@ import { PantallaCuadrante } from '../src/ui/PantallaCuadrante';
 
 export default function RutaCuadrante() {
   const router = useRouter();
-  return <PantallaCuadrante onIrAEmpleados={() => router.push('/empleados')} />;
+  return (
+    <PantallaCuadrante
+      onIrAEmpleados={() => router.push('/empleados')}
+      onIrAAjustes={() => router.push('/ajustes')}
+    />
+  );
 }

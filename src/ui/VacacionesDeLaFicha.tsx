@@ -25,7 +25,7 @@ import {
 } from '../dominio/vacaciones';
 import { ConfirmacionEliminar } from './ConfirmacionEliminar';
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { CIFRAS_TABULARES, colores, pesos, tipografia } from './tema';
 import { usarAlmacen } from './usarAlmacen';
 
 export const MENSAJE_SIN_VACACIONES = 'No tiene ningún rango de vacaciones.';
@@ -289,7 +289,7 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     fontSize: tipografia.titulo,
-    fontWeight: '700',
+    fontWeight: pesos.bold,
     color: colores.texto,
   },
   mensajeVacio: {
@@ -302,13 +302,14 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
     minHeight: LADO_PULSABLE_MINIMO,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colores.borde,
+    borderBottomWidth: 1,
+    borderBottomColor: colores.lineaRejilla,
   },
   fechas: {
     flex: 1,
     fontSize: tipografia.cuerpo,
     color: colores.texto,
+    fontVariant: CIFRAS_TABULARES,
   },
   accionesDelRango: {
     flexDirection: 'row',
@@ -337,11 +338,12 @@ const estilos = StyleSheet.create({
   campo: {
     minHeight: LADO_PULSABLE_MINIMO,
     borderWidth: 1,
-    borderColor: colores.borde,
+    borderColor: colores.lineaRejilla,
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: tipografia.titulo,
     color: colores.texto,
+    fontVariant: CIFRAS_TABULARES,
     marginBottom: 8,
   },
   motivo: {
@@ -361,11 +363,12 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
 });

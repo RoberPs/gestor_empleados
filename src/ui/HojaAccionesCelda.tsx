@@ -11,7 +11,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import type { ContenidoCelda } from '../dominio/tipos';
 import { accionesPara, etiquetaDeAccion, idDeAccion, type AccionCelda } from './accionesDeCelda';
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { colores, pesos, tipografia } from './tema';
 
 interface Props {
   readonly visible: boolean;
@@ -87,7 +87,7 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     fontSize: tipografia.titulo,
-    fontWeight: '700',
+    fontWeight: pesos.bold,
     color: colores.texto,
     marginBottom: 8,
   },
@@ -98,14 +98,16 @@ const estilos = StyleSheet.create({
     marginVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colores.borde,
+    borderColor: colores.lineaRejilla,
   },
   accionDestructiva: {
     backgroundColor: colores.fondoAccionDestructiva,
+    borderColor: colores.textoAccionDestructiva,
   },
   textoAccion: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
   textoAccionDestructiva: {
     color: colores.textoAccionDestructiva,

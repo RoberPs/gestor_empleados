@@ -16,7 +16,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { colores, pesos, tipografia } from './tema';
 
 export const TITULO_ALMACENAMIENTO_NO_DISPONIBLE = 'No se han podido abrir tus datos';
 export const EXPLICACION_ALMACENAMIENTO_NO_DISPONIBLE =
@@ -53,6 +53,7 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     fontSize: tipografia.titulo,
+    fontWeight: pesos.bold,
     color: colores.texto,
     textAlign: 'center',
   },
@@ -66,11 +67,12 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
 });

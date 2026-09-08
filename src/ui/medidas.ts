@@ -8,9 +8,41 @@
  */
 
 import { DIAS_POR_SEMANA } from '../dominio/semana';
+import { tipografia } from './tema';
 
 /** Área pulsable mínima de una celda, en puntos. */
 export const LADO_PULSABLE_MINIMO = 44;
+
+/**
+ * Líneas de hora que tiene que poder mostrar una celda: dos turnos, con su hora
+ * de inicio y su hora de fin cada uno. Es el contenido más alto que admite una
+ * celda, y por tanto el que fija el alto de la fila.
+ */
+const LINEAS_DE_HORA_POR_CELDA = 4;
+
+/** Separación vertical propia de cada turno dentro de la celda, arriba y abajo. */
+const MARGEN_POR_TURNO = 1;
+/** Aire que la celda deja por dentro, arriba y abajo. */
+const RELLENO_DE_LA_CELDA = 2;
+
+/**
+ * Alto de una fila de la rejilla, en puntos.
+ *
+ * Todas las filas miden lo mismo, tengan lo que tengan: una fila vacía ocupa lo
+ * que una con dos turnos, y la rejilla no cambia de forma al pasar de una semana
+ * a otra. El alto sale del contenido más alto que puede llegar a haber —cuatro
+ * horas, una debajo de otra— para que ese caso quepa entero y sin truncar.
+ *
+ * Se calcula con la escala de letra del dispositivo, no con un número fijo:
+ * cuando el encargado tiene el móvil configurado con letra grande, el texto crece
+ * y la fila tiene que crecer con él o las horas quedarían cortadas.
+ */
+export function altoDeFila(escalaDeLetra: number): number {
+  const altoDeLinea = Math.ceil(tipografia.hora * escalaDeLetra * 1.3);
+  const altoDelContenido =
+    LINEAS_DE_HORA_POR_CELDA * (altoDeLinea + MARGEN_POR_TURNO) + RELLENO_DE_LA_CELDA * 2;
+  return Math.max(LADO_PULSABLE_MINIMO, altoDelContenido);
+}
 
 /** Ancho mínimo de pantalla soportado, en orientación vertical. */
 export const ANCHO_MINIMO_SOPORTADO = 360;

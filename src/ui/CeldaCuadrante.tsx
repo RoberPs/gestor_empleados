@@ -18,7 +18,7 @@ import {
 } from '../dominio/tipos';
 import { describirTurno, ordenarPorHoraDeInicio } from '../dominio/turno';
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { CIFRAS_TABULARES, colores, pesos, tipografia } from './tema';
 
 interface Props {
   readonly contenido: ContenidoCelda;
@@ -111,8 +111,9 @@ const estilos = StyleSheet.create({
   celda: {
     minWidth: LADO_PULSABLE_MINIMO,
     minHeight: LADO_PULSABLE_MINIMO,
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: colores.borde,
+    // Un punto, no media línea: la separación entre días tiene que verse al sol.
+    borderRightWidth: 1,
+    borderRightColor: colores.lineaRejilla,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 2,
@@ -131,24 +132,27 @@ const estilos = StyleSheet.create({
   },
   hora: {
     fontSize: tipografia.hora,
+    fontWeight: pesos.medium,
     color: colores.texto,
-    fontVariant: ['tabular-nums'],
+    fontVariant: CIFRAS_TABULARES,
   },
   etiqueta: {
     fontSize: tipografia.etiqueta,
-    fontWeight: '700',
-    color: colores.texto,
+    fontWeight: pesos.bold,
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
   // Además del fondo, cada etiqueta lleva su propio texto y su propio borde,
   // para que se distingan sin depender únicamente del color.
   etiquetaAusencia: {
+    color: colores.tintaAusencia,
+    borderColor: colores.tintaAusencia,
     borderStyle: 'solid',
   },
   etiquetaVacaciones: {
+    color: colores.tintaVacaciones,
+    borderColor: colores.tintaVacaciones,
     borderStyle: 'dashed',
   },
   fondoAusencia: {

@@ -3,8 +3,9 @@
  */
 
 import { act, render } from '@testing-library/react-native';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
+import { SafeAreaProvider, type Metrics } from 'react-native-safe-area-context';
 
 import {
   crearAlmacenEnMemoria,
@@ -34,12 +35,39 @@ export const DOMINGO = '2026-09-13';
 
 export const hora = (horas: number, minutos = 0) => ({ horas, minutos });
 
+/**
+ * Un dispositivo sin nada que estorbe por los bordes: ni muesca, ni barra de
+ * navegación. Es lo que ve la mayoría de los tests, ajenos a ese asunto; el que
+ * sí lo comprueba declara sus propios márgenes.
+ */
+export const SIN_BORDES_OCUPADOS: Metrics = {
+  frame: { x: 0, y: 0, width: ANCHO_MINIMO_SOPORTADO, height: 800 },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 },
+};
+
+/** Envuelve la pantalla en el área segura que declare el test. */
+export function ConAreaSegura({
+  metricas = SIN_BORDES_OCUPADOS,
+  children,
+}: {
+  readonly metricas?: Metrics;
+  readonly children: ReactNode;
+}) {
+  return <SafeAreaProvider initialMetrics={metricas}>{children}</SafeAreaProvider>;
+}
+
 interface Opciones {
   readonly plantilla?: readonly string[];
   readonly reloj?: () => Date;
   readonly anchoDePantalla?: number;
   readonly onIrAEmpleados?: () => void;
   readonly prepararDatos?: (datos: AlmacenCuadrante) => void;
+  /** Márgenes del dispositivo (muesca, barra de navegación). Por defecto, ninguno. */
+  readonly areaSegura?: Metrics;
+  /** Nombre del local. Por defecto, ninguno: como en un dispositivo recién estrenado. */
+  readonly nombreDelLocal?: string;
+  /** Navegación a los ajustes del local. */
+  readonly onIrAAjustes?: () => void;
 }
 
 export interface CuadranteRenderizado {
@@ -54,18 +82,25 @@ export async function renderizarCuadrante(opciones: Opciones = {}): Promise<Cuad
     anchoDePantalla = ANCHO_MINIMO_SOPORTADO,
     onIrAEmpleados,
     prepararDatos,
+    areaSegura,
+    nombreDelLocal,
+    onIrAAjustes,
   } = opciones;
 
   const datos = crearAlmacenEnMemoria(plantilla);
+  if (nombreDelLocal) datos.escribirNombreDelLocal(nombreDelLocal);
   prepararDatos?.(datos);
   instalarAlmacen(datos);
 
   await render(
-    <PantallaCuadrante
-      reloj={reloj}
-      anchoDePantalla={anchoDePantalla}
-      onIrAEmpleados={onIrAEmpleados}
-    />,
+    <ConAreaSegura metricas={areaSegura}>
+      <PantallaCuadrante
+        reloj={reloj}
+        anchoDePantalla={anchoDePantalla}
+        onIrAEmpleados={onIrAEmpleados}
+        onIrAAjustes={onIrAAjustes}
+      />
+    </ConAreaSegura>,
   );
 
   return {
@@ -96,19 +131,25 @@ export function PanelDeEmpleados() {
 interface OpcionesDelPanel {
   readonly plantilla?: readonly string[];
   readonly prepararDatos?: (datos: AlmacenCuadrante) => void;
+  /** Márgenes del dispositivo (muesca, barra de navegación). Por defecto, ninguno. */
+  readonly areaSegura?: Metrics;
 }
 
 /** Renderiza el panel de empleados sobre un almacén recién creado. */
 export async function renderizarPanelDeEmpleados(
   opciones: OpcionesDelPanel = {},
 ): Promise<AlmacenCuadrante> {
-  const { plantilla = ['Ana', 'Bruno', 'Carmen'], prepararDatos } = opciones;
+  const { plantilla = ['Ana', 'Bruno', 'Carmen'], prepararDatos, areaSegura } = opciones;
 
   const datos = crearAlmacenEnMemoria(plantilla);
   prepararDatos?.(datos);
   instalarAlmacen(datos);
 
-  await render(<PanelDeEmpleados />);
+  await render(
+    <ConAreaSegura metricas={areaSegura}>
+      <PanelDeEmpleados />
+    </ConAreaSegura>,
+  );
   return datos;
 }
 

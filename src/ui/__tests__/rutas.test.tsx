@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import RutaCuadrante from '../../../app/index';
 import RutaEmpleados from '../../../app/empleados';
 import RutaFichaEmpleado from '../../../app/empleados/[id]';
+import RutaAjustes from '../../../app/ajustes';
 import { crearAlmacenEnMemoria, instalarAlmacen } from '../../datos/almacenCuadrante';
 
 const mockEmpujar = jest.fn();
@@ -74,6 +75,29 @@ describe('Rutas de la app', () => {
     expect(screen.getByTestId('titulo-de-la-ficha')).toHaveTextContent('Bruno');
 
     await fireEvent.press(screen.getByTestId('accion-volver-a-la-lista'));
+    expect(mockAtras).toHaveBeenCalled();
+  });
+
+  it('desde el cuadrante se navega a los ajustes del local', async () => {
+    instalarAlmacen(crearAlmacenEnMemoria(['Ana']));
+    await render(<RutaCuadrante />);
+
+    await fireEvent.press(screen.getByTestId('accion-escribir-el-nombre-del-local'));
+
+    expect(mockEmpujar).toHaveBeenCalledWith('/ajustes');
+  });
+
+  it('la ruta de ajustes muestra el nombre del local y permite volver', async () => {
+    const datos = crearAlmacenEnMemoria(['Ana']);
+    datos.escribirNombreDelLocal('La Esquina café');
+    instalarAlmacen(datos);
+
+    await render(<RutaAjustes />);
+
+    expect(screen.getByTestId('pantalla-ajustes')).toBeTruthy();
+    expect(screen.getByTestId('campo-nombre-del-local').props.value).toBe('La Esquina café');
+
+    await fireEvent.press(screen.getByTestId('accion-volver-al-cuadrante'));
     expect(mockAtras).toHaveBeenCalled();
   });
 });

@@ -42,8 +42,10 @@ import { sanearCampo, sePuedeGuardarElNombre } from '../dominio/empleado';
 import { ordenarEmpleadosPorNombre } from '../dominio/orden';
 import { ordenarPorHoraDeInicio } from '../dominio/turno';
 import { agruparEnRangos, diasDelRango, type RangoDeVacaciones } from '../dominio/vacaciones';
+import { crearAlmacenAjustesEnMemoria, type AlmacenAjustes } from './almacenAjustes';
 import type { AlmacenEmpleados } from './almacenEmpleados';
 import type { BaseDeDatos } from './sqlite/bd';
+import { crearAlmacenAjustesSqlite } from './sqlite/almacenAjustesSqlite';
 import { crearAlmacenEmpleadosSqlite } from './sqlite/almacenEmpleadosSqlite';
 
 /** Contenido de una semana entera: para cada empleado, sus siete días. */
@@ -95,6 +97,11 @@ export interface AlmacenCuadrante {
   marcarAusencia(idEmpleado: IdEmpleado, dia: FechaISO): void;
   marcarVacaciones(idEmpleado: IdEmpleado, dia: FechaISO): void;
   vaciarCelda(idEmpleado: IdEmpleado, dia: FechaISO): void;
+
+  /** El nombre del local, o cadena vacía si el encargado no lo ha escrito nunca. */
+  leerNombreDelLocal(): string;
+  /** Guarda el nombre del local, sin los espacios sobrantes. */
+  escribirNombreDelLocal(nombre: string): void;
 
   /** Avisa de cualquier cambio, para que la pantalla se vuelva a pintar. */
   suscribirse(oyente: () => void): () => void;
@@ -197,7 +204,10 @@ export function crearAlmacenEmpleadosEnMemoria(): AlmacenEmpleados {
  * —contra SQLite en la app, en memoria en los tests de pantalla— y las celdas del
  * cuadrante viven en memoria hasta el change de turnos.
  */
-export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadrante {
+export function crearAlmacenCuadrante(
+  empleados: AlmacenEmpleados,
+  ajustes: AlmacenAjustes = crearAlmacenAjustesEnMemoria(),
+): AlmacenCuadrante {
   const celdas = new Map<string, ContenidoCelda>();
   const oyentes = new Set<() => void>();
   let siguienteIdDeTurno = 1;
@@ -248,6 +258,9 @@ export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadr
     editarTelefono: (...argumentos) => empleados.editarTelefono(...argumentos),
     editarEmail: (...argumentos) => empleados.editarEmail(...argumentos),
     editarNota: (...argumentos) => empleados.editarNota(...argumentos),
+
+    leerNombreDelLocal: (...argumentos) => ajustes.leerNombreDelLocal(...argumentos),
+    escribirNombreDelLocal: (...argumentos) => ajustes.escribirNombreDelLocal(...argumentos),
 
     leerRangosDeVacaciones(id) {
       const dias: FechaISO[] = [];
@@ -339,9 +352,11 @@ export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadr
       // almacenes: cambie la plantilla o cambie una celda, se vuelve a pintar.
       oyentes.add(oyente);
       const darseDeBajaDeEmpleados = empleados.suscribirse(oyente);
+      const darseDeBajaDeAjustes = ajustes.suscribirse(oyente);
       return () => {
         oyentes.delete(oyente);
         darseDeBajaDeEmpleados();
+        darseDeBajaDeAjustes();
       };
     },
   };
@@ -361,7 +376,7 @@ export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []):
  * celdas del cuadrante todavía en memoria.
  */
 export function crearAlmacenSobreSqlite(bd: BaseDeDatos): AlmacenCuadrante {
-  return crearAlmacenCuadrante(crearAlmacenEmpleadosSqlite(bd));
+  return crearAlmacenCuadrante(crearAlmacenEmpleadosSqlite(bd), crearAlmacenAjustesSqlite(bd));
 }
 
 /**
@@ -389,6 +404,8 @@ export function crearAlmacenNoDisponible(): AlmacenCuadrante {
     editarEmail: rechazar,
     editarNota: rechazar,
     borrarEmpleado: rechazar,
+    leerNombreDelLocal: rechazar,
+    escribirNombreDelLocal: rechazar,
     leerRangosDeVacaciones: rechazar,
     contarDiasConContenido: rechazar,
     marcarRangoDeVacaciones: rechazar,

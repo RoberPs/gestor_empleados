@@ -1,8 +1,8 @@
 /**
  * Ficha de un empleado: nombre, teléfono, email, vacaciones y nota.
  *
- * Nada es de solo lectura para el encargado, y **cada campo queda guardado al
- * terminar de editarlo**: no hay botón de guardar global ni diálogo de "¿descartar
+ * Nada es de solo lectura para el encargado, y **cada campo queda guardado según
+ * se escribe**: no hay botón de guardar global ni diálogo de "¿descartar
  * cambios?" al volver. Son pocos toques por operación y ningún camino en el que
  * volver atrás pierda lo escrito. A cambio se acepta conscientemente que una
  * edición accidental quede guardada: no hay deshacer en este producto.
@@ -17,12 +17,14 @@
 
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { motivoPorElQueElNombreNoSeGuarda } from '../dominio/empleado';
 import type { IdEmpleado } from '../dominio/tipos';
+import { AvisoDeGuardado } from './AvisoDeGuardado';
 import { ConfirmacionEliminar } from './ConfirmacionEliminar';
 import { ANCHO_MINIMO_SOPORTADO, LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { colores, pesos, tipografia } from './tema';
 import { usarAlmacen } from './usarAlmacen';
 import { VacacionesDeLaFicha } from './VacacionesDeLaFicha';
 
@@ -44,7 +46,11 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
 
   const [nombre, setNombre] = useState(empleado?.nombre ?? '');
   const [motivoDelNombre, setMotivoDelNombre] = useState<string | null>(null);
+  const [nombreGuardado, setNombreGuardado] = useState(false);
   const [dandoDeBaja, setDandoDeBaja] = useState(false);
+  // La ficha termina en la acción de baja: sin este aire queda bajo la barra de
+  // navegación del móvil.
+  const { bottom } = useSafeAreaInsets();
 
   /**
    * La ficha de alguien que ya no está en la plantilla no es una pantalla de este
@@ -66,12 +72,14 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
       idEmpleado,
     );
     if (problema) {
-      // No se guarda, se explica y lo tecleado sigue ahí para corregirlo.
+      // No se guarda, se explica y lo tecleado sigue ahí para corregirlo. Y no se
+      // dice que haya quedado guardado, porque no lo está.
       setMotivoDelNombre(problema);
+      setNombreGuardado(false);
       return;
     }
     setMotivoDelNombre(null);
-    datos.editarNombre(idEmpleado, nombre);
+    setNombreGuardado(datos.editarNombre(idEmpleado, nombre));
   }
 
   return (
@@ -95,7 +103,10 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
 
       {/* Todo el contenido se recorre con scroll vertical: ningún campo queda
           fuera de alcance por muchos rangos de vacaciones que haya. */}
-      <ScrollView testID="scroll-de-la-ficha" contentContainerStyle={estilos.contenido}>
+      <ScrollView
+        testID="scroll-de-la-ficha"
+        contentContainerStyle={[estilos.contenido, { paddingBottom: 24 + bottom }]}
+      >
         <Text style={estilos.etiqueta}>Nombre</Text>
         <TextInput
           testID="campo-nombre"
@@ -106,6 +117,7 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
             // Al corregir desaparece la explicación: no debe leerse que sigue sin
             // poder guardarse un nombre que ya es válido.
             setMotivoDelNombre(null);
+            setNombreGuardado(false);
           }}
           onEndEditing={terminarDeEditarElNombre}
           onBlur={terminarDeEditarElNombre}
@@ -116,6 +128,10 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
             {motivoDelNombre}
           </Text>
         ) : null}
+        <AvisoDeGuardado
+          visible={nombreGuardado && motivoDelNombre === null}
+          testID="guardado-campo-nombre"
+        />
 
         <CampoDeLaFicha
           testID="campo-telefono"
@@ -150,7 +166,7 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
           onPress={() => setDandoDeBaja(true)}
           style={[estilos.boton, estilos.botonDestructivo]}
         >
-          <Text style={estilos.textoBoton}>{ACCION_BAJA}</Text>
+          <Text style={[estilos.textoBoton, estilos.textoBotonDestructivo]}>{ACCION_BAJA}</Text>
         </Pressable>
       </ScrollView>
 
@@ -171,12 +187,16 @@ export function PantallaFichaEmpleado({ idEmpleado, onVolver }: Props) {
 }
 
 /**
- * Un campo de la ficha que se guarda solo al terminar de editarlo.
+ * Un campo de la ficha que se guarda solo, según se escribe.
  *
- * Se teclea sobre una copia local y se escribe en el almacén al cerrar la edición
- * —al pasar a otro campo o al cerrar el teclado—, que es lo que el encargado
- * entiende por "terminar de escribir". El teléfono, el email y la nota se pueden
- * vaciar: no hay nada que validar en ellos.
+ * Guardaba al terminar de editar —`onEndEditing` y `onBlur`—, y con la nota eso
+ * no bastaba: en Android, un campo multilínea del que se sale con el gesto de
+ * volver no llega a emitir ninguno de los dos, así que lo escrito se perdía sin
+ * que nada lo advirtiera. Se guarda en cada cambio, que es la única forma que no
+ * depende de por dónde se salga de la pantalla.
+ *
+ * El teléfono, el email y la nota se pueden vaciar: no hay nada que validar en
+ * ellos.
  */
 function CampoDeLaFicha({
   testID,
@@ -194,7 +214,15 @@ function CampoDeLaFicha({
   readonly keyboardType?: 'phone-pad' | 'email-address';
 }) {
   const [texto, setTexto] = useState(valorGuardado);
-  const terminar = () => onGuardar(texto);
+  // Lo que se acaba de escribir queda guardado, y el campo lo dice. Se queda dicho
+  // mientras la ficha siga abierta: al reabrirla nadie ha tocado nada todavía.
+  const [guardado, setGuardado] = useState(false);
+
+  function escribir(nuevo: string) {
+    setTexto(nuevo);
+    onGuardar(nuevo);
+    setGuardado(true);
+  }
 
   return (
     <>
@@ -203,9 +231,7 @@ function CampoDeLaFicha({
         testID={testID}
         accessibilityLabel={etiqueta}
         value={texto}
-        onChangeText={setTexto}
-        onEndEditing={terminar}
-        onBlur={terminar}
+        onChangeText={escribir}
         keyboardType={keyboardType}
         autoCapitalize={keyboardType === 'email-address' ? 'none' : 'sentences'}
         // La nota es de texto libre y crece con lo que se escriba: la interfaz no
@@ -213,6 +239,7 @@ function CampoDeLaFicha({
         multiline={multilinea}
         style={[estilos.campo, multilinea ? estilos.campoMultilinea : null]}
       />
+      <AvisoDeGuardado visible={guardado} testID={`guardado-${testID}`} />
     </>
   );
 }
@@ -233,7 +260,7 @@ const estilos = StyleSheet.create({
   titulo: {
     flex: 1,
     fontSize: tipografia.titulo,
-    fontWeight: '700',
+    fontWeight: pesos.bold,
     color: colores.texto,
   },
   contenido: {
@@ -248,7 +275,7 @@ const estilos = StyleSheet.create({
   campo: {
     minHeight: LADO_PULSABLE_MINIMO,
     borderWidth: 1,
-    borderColor: colores.borde,
+    borderColor: colores.lineaRejilla,
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: tipografia.titulo,
@@ -269,15 +296,21 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   botonDestructivo: {
     backgroundColor: colores.fondoAccionDestructiva,
+    borderColor: colores.textoAccionDestructiva,
     marginTop: 24,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
+  },
+  /** El mismo tratamiento que la acción destructiva de la hoja de acciones. */
+  textoBotonDestructivo: {
+    color: colores.textoAccionDestructiva,
   },
 });

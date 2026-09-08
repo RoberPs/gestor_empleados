@@ -17,7 +17,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { motivoPorElQueElNombreNoSeGuarda } from '../dominio/empleado';
 import type { Empleado } from '../dominio/tipos';
 import { LADO_PULSABLE_MINIMO } from './medidas';
-import { colores, tipografia } from './tema';
+import { colores, pesos, tipografia } from './tema';
 
 export const TITULO_ALTA = 'Nuevo empleado';
 
@@ -157,7 +157,7 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     fontSize: tipografia.titulo,
-    fontWeight: '700',
+    fontWeight: pesos.bold,
     color: colores.texto,
     marginBottom: 8,
   },
@@ -168,7 +168,7 @@ const estilos = StyleSheet.create({
   campo: {
     minHeight: LADO_PULSABLE_MINIMO,
     borderWidth: 1,
-    borderColor: colores.borde,
+    borderColor: colores.lineaRejilla,
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: tipografia.titulo,
@@ -191,11 +191,12 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colores.bordeFuerte,
+    borderColor: colores.accion,
     borderRadius: 8,
   },
   textoBoton: {
     fontSize: tipografia.cuerpo,
-    color: colores.texto,
+    fontWeight: pesos.medium,
+    color: colores.accion,
   },
 });
