@@ -23,7 +23,7 @@ import {
   sePuedeGuardarElRango,
   type RangoDeVacaciones,
 } from '../dominio/vacaciones';
-import { ConfirmacionEliminar } from './ConfirmacionEliminar';
+import { ConfirmacionIrreversible } from './ConfirmacionIrreversible';
 import { LADO_PULSABLE_MINIMO } from './medidas';
 import { CIFRAS_TABULARES, colores, pesos, tipografia } from './tema';
 import { usarAlmacen } from './usarAlmacen';
@@ -171,7 +171,7 @@ export function VacacionesDeLaFicha({ idEmpleado }: { readonly idEmpleado: IdEmp
         </Modal>
       ) : null}
 
-      <ConfirmacionEliminar
+      <ConfirmacionIrreversible
         visible={dialogo?.tipo === 'eliminar'}
         mensaje={
           dialogo?.tipo === 'eliminar'

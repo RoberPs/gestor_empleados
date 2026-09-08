@@ -1,9 +1,15 @@
 /**
- * Confirmación explícita antes de eliminar el contenido de una celda.
+ * Confirmación explícita antes de un acto que no se puede deshacer.
  *
- * Las celdas son contiguas y de 44 puntos, y se manejan con prisa y con una mano:
- * un borrado silencioso solo se detectaría cuando el turno ya no aparece. Por eso
- * se pide confirmación. Una vez confirmada, no hay deshacer.
+ * Las celdas son contiguas y de 44 puntos, y se manejan con prisa y con una mano: un
+ * cambio silencioso solo se detectaría cuando el turno ya no aparece. Por eso se pide
+ * confirmación antes de eliminar el contenido de una celda, antes de dar de baja a un
+ * empleado y antes de pegar encima de una celda que ya tiene algo —que borra lo que
+ * hubiera igual que eliminarlo—. Una vez confirmada, no hay deshacer.
+ *
+ * Los `testID` siguen hablando de eliminar porque eliminar fue el primer acto que
+ * pasó por aquí y son la referencia de los tests que ya existían: renombrarlos no
+ * cambiaría nada de lo que el encargado ve.
  */
 
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -25,7 +31,7 @@ interface Props {
   readonly onDesistir: () => void;
 }
 
-export function ConfirmacionEliminar({
+export function ConfirmacionIrreversible({
   visible,
   mensaje,
   textoConfirmar = 'Eliminar',

@@ -17,12 +17,21 @@ interface Props {
   readonly visible: boolean;
   readonly titulo: string;
   readonly contenido: ContenidoCelda;
+  /** Si hay algo copiado de otra celda: es lo que decide si se ofrece pegar. */
+  readonly hayAlgoCopiado?: boolean;
   readonly onElegir: (accion: AccionCelda) => void;
   readonly onCancelar: () => void;
 }
 
-export function HojaAccionesCelda({ visible, titulo, contenido, onElegir, onCancelar }: Props) {
-  const acciones = accionesPara(contenido);
+export function HojaAccionesCelda({
+  visible,
+  titulo,
+  contenido,
+  hayAlgoCopiado = false,
+  onElegir,
+  onCancelar,
+}: Props) {
+  const acciones = accionesPara(contenido, hayAlgoCopiado);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancelar}>
@@ -40,6 +49,7 @@ export function HojaAccionesCelda({ visible, titulo, contenido, onElegir, onCanc
                 style={[
                   estilos.accion,
                   esDestructiva(accion) ? estilos.accionDestructiva : undefined,
+                  esDeCopia(accion) ? estilos.accionDeCopia : undefined,
                 ]}
               >
                 <Text
@@ -66,6 +76,14 @@ export function HojaAccionesCelda({ visible, titulo, contenido, onElegir, onCanc
       </View>
     </Modal>
   );
+}
+
+/**
+ * Copiar y pegar se separan del grupo de arriba con un hueco: son de otra clase de
+ * acto —repetir lo que ya hay— y no de los que crean, editan o eliminan contenido.
+ */
+function esDeCopia(accion: AccionCelda): boolean {
+  return accion.tipo === 'copiar';
 }
 
 function esDestructiva(accion: AccionCelda): boolean {
@@ -99,6 +117,10 @@ const estilos = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colores.lineaRejilla,
+  },
+  /** El hueco que separa el bloque de copiar y pegar del resto. */
+  accionDeCopia: {
+    marginTop: 12,
   },
   accionDestructiva: {
     backgroundColor: colores.fondoAccionDestructiva,

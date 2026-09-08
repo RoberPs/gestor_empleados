@@ -37,7 +37,9 @@ import {
   type IdEmpleado,
   type IdTurno,
   type TurnoPlanificado,
+  type TurnosDelDia,
 } from '../dominio/tipos';
+import type { ContenidoCopiado } from '../dominio/copia';
 import { sanearCampo, sePuedeGuardarElNombre } from '../dominio/empleado';
 import { ordenarEmpleadosPorNombre } from '../dominio/orden';
 import { ordenarPorHoraDeInicio } from '../dominio/turno';
@@ -100,12 +102,49 @@ export interface AlmacenCuadrante {
   marcarVacaciones(idEmpleado: IdEmpleado, dia: FechaISO): void;
   vaciarCelda(idEmpleado: IdEmpleado, dia: FechaISO): void;
 
+  /**
+   * Deja la celda con el contenido copiado de otra: vacía lo que hubiera y aplica lo
+   * nuevo, en una sola operación.
+   *
+   * Es una operación de la capa de datos y no una receta de la pantalla porque pegar
+   * unas vacaciones sobre una celda de dos turnos son tres escrituras en un orden
+   * concreto: sueltas, cada una avisaría a los suscriptores y la rejilla se
+   * repintaría con la celda a medio hacer, en un estado que nunca debió verse.
+   *
+   * Los turnos copiados se crean **nuevos** en esta celda: no se reutiliza ningún
+   * identificador de la celda de origen, que además se queda intacta.
+   */
+  pegarEnCelda(idEmpleado: IdEmpleado, dia: FechaISO, contenido: ContenidoCopiado): void;
+
   /** Avisa de cualquier cambio, para que la pantalla se vuelva a pintar. */
   suscribirse(oyente: () => void): () => void;
 }
 
 function clave(idEmpleado: IdEmpleado, dia: FechaISO): string {
   return `${idEmpleado}|${dia}`;
+}
+
+/**
+ * El contenido que deja en la celda lo copiado de otra.
+ *
+ * Los turnos se crean con identificadores **nuevos**, pedidos aquí mismo: lo copiado
+ * no trae ninguno, precisamente para que no se pueda reutilizar el de la celda de
+ * origen. Se ordenan por hora de inicio igual que los que se crean a mano, para que
+ * una celda pegada y una celda tecleada no se distingan en nada.
+ */
+function celdaConLoCopiado(contenido: ContenidoCopiado, nuevoId: () => IdTurno): ContenidoCelda {
+  if (contenido.tipo === 'ausencia') return { tipo: 'ausencia' };
+  if (contenido.tipo === 'vacaciones') return { tipo: 'vacaciones' };
+
+  const [primero, segundo] = contenido.turnos;
+  const turnos: TurnosDelDia = segundo
+    ? ordenarPorHoraDeInicio([
+        { id: nuevoId(), inicio: primero.inicio, fin: primero.fin },
+        { id: nuevoId(), inicio: segundo.inicio, fin: segundo.fin },
+      ])
+    : [{ id: nuevoId(), inicio: primero.inicio, fin: primero.fin }];
+
+  return { tipo: 'turnos', turnos };
 }
 
 /**
@@ -355,6 +394,12 @@ export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadr
       escribirCelda(idEmpleado, dia, CELDA_VACIA);
     },
 
+    pegarEnCelda(idEmpleado, dia, contenido) {
+      // Una sola escritura, y por tanto un solo aviso: la celda pasa de lo que tenía
+      // a lo pegado sin estados intermedios que la rejilla pudiera llegar a pintar.
+      escribirCelda(idEmpleado, dia, celdaConLoCopiado(contenido, nuevoId));
+    },
+
     suscribirse(oyente) {
       // Un solo punto de suscripción para la pantalla, aunque debajo haya dos
       // almacenes: cambie la plantilla o cambie una celda, se vuelve a pintar.
@@ -424,6 +469,7 @@ export function crearAlmacenNoDisponible(): AlmacenCuadrante {
     marcarAusencia: rechazar,
     marcarVacaciones: rechazar,
     vaciarCelda: rechazar,
+    pegarEnCelda: rechazar,
     // Suscribirse no es una operación sobre los datos: nunca habrá ningún cambio
     // del que avisar, así que se admite y no llama a nadie.
     suscribirse: () => () => {},

@@ -13,6 +13,7 @@ import {
   type AlmacenCuadrante,
 } from '../datos/almacenCuadrante';
 import type { Empleado, IdEmpleado } from '../dominio/tipos';
+import { olvidarLoCopiado } from '../ui/loCopiado';
 import { ANCHO_MINIMO_SOPORTADO } from '../ui/medidas';
 import { PantallaCuadrante } from '../ui/PantallaCuadrante';
 import { PantallaEmpleados } from '../ui/PantallaEmpleados';
@@ -87,6 +88,9 @@ export async function renderizarCuadrante(opciones: Opciones = {}): Promise<Cuad
   const datos = crearAlmacenEnMemoria(plantilla);
   prepararDatos?.(datos);
   instalarAlmacen(datos);
+  // Lo copiado vive en un módulo, no en el almacén: sin esto, lo que copia un test se
+  // le aparecería al siguiente ofreciéndole pegar.
+  olvidarLoCopiado();
 
   await render(
     <ConAreaSegura metricas={areaSegura}>
@@ -140,6 +144,7 @@ export async function renderizarPanelDeEmpleados(
   const datos = crearAlmacenEnMemoria(plantilla);
   prepararDatos?.(datos);
   instalarAlmacen(datos);
+  olvidarLoCopiado();
 
   await render(
     <ConAreaSegura metricas={areaSegura}>
@@ -195,6 +200,7 @@ export async function renderizarCuadranteConFicha(
   const datos = crearAlmacenEnMemoria(plantilla);
   prepararDatos?.(datos);
   instalarAlmacen(datos);
+  olvidarLoCopiado();
 
   await render(
     <ConAreaSegura metricas={areaSegura}>

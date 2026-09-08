@@ -24,6 +24,7 @@ describe('Acciones que ofrece cada estado de la celda', () => {
       'marcar-ausencia',
       'marcar-vacaciones',
       'eliminar-turno',
+      'copiar',
     ]);
   });
 
@@ -43,6 +44,7 @@ describe('Acciones que ofrece cada estado de la celda', () => {
       'marcar-vacaciones',
       'crear-turno',
       'eliminar-contenido',
+      'copiar',
     ]);
   });
 
@@ -54,7 +56,12 @@ describe('Acciones que ofrece cada estado de la celda', () => {
   });
 
   it('sobre una celda con vacaciones: cambiar a ausencia, sustituir por turno planificado y eliminarlas', () => {
-    expect(tipos(vacaciones)).toEqual(['marcar-ausencia', 'crear-turno', 'eliminar-contenido']);
+    expect(tipos(vacaciones)).toEqual([
+      'marcar-ausencia',
+      'crear-turno',
+      'eliminar-contenido',
+      'copiar',
+    ]);
   });
 
   it('las acciones usan siempre las palabras completas, nunca AUS ni VAC', () => {
@@ -80,5 +87,56 @@ describe('Acciones que ofrece cada estado de la celda', () => {
     expect(etiquetaDeAccion({ tipo: 'eliminar-turno', turno: turnoManana }, dosTurnos)).toBe(
       'Eliminar el turno de 12:00 a 16:00',
     );
+  });
+});
+
+describe('Copiar y pegar entre las acciones de la celda', () => {
+  const tiposConCopiado = (contenido: ContenidoCelda) =>
+    accionesPara(contenido, true).map((a) => a.tipo);
+
+  it('Una celda vacía no se puede copiar', () => {
+    expect(tipos(vacia)).not.toContain('copiar');
+    expect(tiposConCopiado(vacia)).not.toContain('copiar');
+  });
+
+  it('copiar se ofrece en los tres estados con contenido', () => {
+    for (const contenido of [unTurno, dosTurnos, ausencia, vacaciones]) {
+      expect(tipos(contenido)).toContain('copiar');
+    }
+  });
+
+  it('Sin nada copiado no se ofrece pegar', () => {
+    for (const contenido of [vacia, unTurno, dosTurnos, ausencia, vacaciones]) {
+      expect(tipos(contenido)).not.toContain('pegar');
+    }
+  });
+
+  it('con algo copiado, pegar se ofrece en los cuatro estados', () => {
+    for (const contenido of [vacia, unTurno, dosTurnos, ausencia, vacaciones]) {
+      expect(tiposConCopiado(contenido)).toContain('pegar');
+    }
+  });
+
+  it('copiar y pegar van al final, después de crear, editar y eliminar', () => {
+    for (const contenido of [unTurno, dosTurnos, ausencia, vacaciones]) {
+      const orden = tiposConCopiado(contenido);
+      expect(orden.slice(-2)).toEqual(['copiar', 'pegar']);
+    }
+    expect(tiposConCopiado(vacia).slice(-1)).toEqual(['pegar']);
+  });
+
+  it('sus etiquetas usan palabras completas y avisan de que pegar sustituye', () => {
+    expect(etiquetaDeAccion({ tipo: 'copiar' }, unTurno)).toBe('Copiar esta celda');
+    expect(etiquetaDeAccion({ tipo: 'pegar' }, vacia)).toBe('Pegar aquí lo copiado');
+    for (const contenido of [unTurno, dosTurnos, ausencia, vacaciones]) {
+      expect(etiquetaDeAccion({ tipo: 'pegar' }, contenido)).toMatch(/sustituyendo/);
+    }
+    for (const contenido of [vacia, unTurno, dosTurnos, ausencia, vacaciones]) {
+      for (const accion of accionesPara(contenido, true)) {
+        const etiqueta = etiquetaDeAccion(accion, contenido);
+        expect(etiqueta).not.toMatch(/\bAUS\b/);
+        expect(etiqueta).not.toMatch(/\bVAC\b/);
+      }
+    }
   });
 });

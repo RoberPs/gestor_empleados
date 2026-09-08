@@ -35,7 +35,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { motivoPorElQueElNombreNoSeGuarda } from '../dominio/empleado';
 import type { IdEmpleado } from '../dominio/tipos';
 import { AvisoDeGuardado } from './AvisoDeGuardado';
-import { ConfirmacionEliminar } from './ConfirmacionEliminar';
+import { ConfirmacionIrreversible } from './ConfirmacionIrreversible';
 import { ANCHO_MINIMO_SOPORTADO, LADO_PULSABLE_MINIMO } from './medidas';
 import { colores, pesos, tipografia } from './tema';
 import { usarAlmacen } from './usarAlmacen';
@@ -279,7 +279,7 @@ export function PantallaFichaEmpleado({ idEmpleado, seAbrioDesde = 'lista', onVo
         </Pressable>
       </ScrollView>
 
-      <ConfirmacionEliminar
+      <ConfirmacionIrreversible
         visible={dandoDeBaja}
         mensaje={advertenciaDeBaja(empleado.nombre)}
         textoConfirmar={ACCION_BAJA}

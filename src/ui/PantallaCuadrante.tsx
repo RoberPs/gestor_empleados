@@ -12,9 +12,17 @@ import { AppState, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import {
   compartirElCuadrante,
+  guardarElCuadrante,
+  MENSAJE_GUARDADO,
   MENSAJE_SIN_PLANTILLA,
 } from '../exportacion/compartirElCuadrante';
-import { formatearFecha, nombreDeDia, type Hora } from '../dominio/formatos';
+import type { DatosDelDocumento } from '../exportacion/documentoDelCuadrante';
+import {
+  formatearFecha,
+  formatearRangoDeSemana,
+  nombreDeDia,
+  type Hora,
+} from '../dominio/formatos';
 import {
   esLaMismaSemana,
   semanaAnterior,
@@ -24,19 +32,25 @@ import {
   type Semana,
 } from '../dominio/semana';
 import type { ContenidoCelda, Empleado, IdEmpleado, TurnoPlanificado } from '../dominio/tipos';
+import { paraCopiar, type ContenidoCopiado } from '../dominio/copia';
 import { CELDA_VACIA, PALABRA_AUSENCIA, PALABRA_VACACIONES } from '../dominio/tipos';
 import { describirTurno } from '../dominio/turno';
 import type { AccionCelda } from './accionesDeCelda';
 import { AvisoDeLaExportacion } from './AvisoDeLaExportacion';
 import { CabeceraSemana, NOMBRE_DEL_LOCAL } from './CabeceraSemana';
-import { ConfirmacionEliminar } from './ConfirmacionEliminar';
+import { ConfirmacionIrreversible } from './ConfirmacionIrreversible';
 import { EstadoVacio } from './EstadoVacio';
 import { FormularioTurno } from './FormularioTurno';
 import { HojaAccionesCelda } from './HojaAccionesCelda';
+import { HojaDestinosDeExportacion } from './HojaDestinosDeExportacion';
 import { LeyendaEtiquetas } from './LeyendaEtiquetas';
+import { copiar, usarLoCopiado } from './loCopiado';
 import { RejillaCuadrante } from './RejillaCuadrante';
 import { colores } from './tema';
 import { usarAlmacen } from './usarAlmacen';
+
+/** Texto del botón que confirma un pegado: el diálogo dice "Eliminar" por defecto. */
+const TEXTO_PEGAR = 'Pegar';
 
 interface CeldaAbierta {
   readonly empleado: Empleado;
@@ -48,7 +62,9 @@ type Dialogo =
   | { readonly tipo: 'crear-turno' }
   | { readonly tipo: 'editar-turno'; readonly turno: TurnoPlanificado }
   | { readonly tipo: 'eliminar-turno'; readonly turno: TurnoPlanificado }
-  | { readonly tipo: 'eliminar-contenido' };
+  | { readonly tipo: 'eliminar-contenido' }
+  /** Pegar sobre una celda que ya tiene contenido: sustituye, y por eso se confirma. */
+  | { readonly tipo: 'pegar-encima'; readonly copiado: ContenidoCopiado };
 
 export interface PropsPantallaCuadrante {
   /** Reloj del dispositivo. Los tests lo inyectan para fijar la fecha actual. */
@@ -68,6 +84,7 @@ export function PantallaCuadrante({
   onAbrirFicha = () => {},
 }: PropsPantallaCuadrante) {
   const datos = usarAlmacen();
+  const copiado = usarLoCopiado();
   const { width } = useWindowDimensions();
   const ancho = anchoDePantalla ?? width;
 
@@ -77,6 +94,8 @@ export function PantallaCuadrante({
   const [dialogo, setDialogo] = useState<Dialogo | null>(null);
   /** Lo que hay que decirle al encargado de la última exportación, si es que algo. */
   const [avisoDeLaExportacion, setAvisoDeLaExportacion] = useState<string | null>(null);
+  /** Si está abierta la hoja donde elige a dónde va la semana que está viendo. */
+  const [eligiendoDestino, setEligiendoDestino] = useState(false);
 
   /**
    * La semana en curso se recalcula cada vez que la app vuelve a primer plano: si
@@ -137,6 +156,27 @@ export function PantallaCuadrante({
         datos.marcarVacaciones(empleado.id, dia);
         cerrarDialogos();
         return;
+      case 'copiar': {
+        // Copiar no toca la celda de origen ni la semana mostrada: solo se lleva lo
+        // que la celda muestra, sin sus identificadores de turno y sin nada de la ficha.
+        const paraElPortapapeles = paraCopiar(contenidoDeLaCeldaAbierta);
+        if (paraElPortapapeles) copiar(paraElPortapapeles);
+        cerrarDialogos();
+        return;
+      }
+      case 'pegar': {
+        if (!copiado) return;
+        // Sobre celda vacía no hay nada que perder y se pega de un toque; sobre una
+        // celda con contenido se confirma, porque pegar encima lo borra igual que
+        // eliminarlo y no hay deshacer.
+        if (contenidoDeLaCeldaAbierta.tipo === 'vacia') {
+          datos.pegarEnCelda(empleado.id, dia, copiado);
+          cerrarDialogos();
+          return;
+        }
+        setDialogo({ tipo: 'pegar-encima', copiado });
+        return;
+      }
       case 'ver-ausencia':
         // El motivo vive en la ficha, no en la celda ni en esta hoja: se cierra el
         // diálogo y se abre la ficha de ese empleado, de donde se vuelve aquí, a
@@ -163,31 +203,48 @@ export function PantallaCuadrante({
     cerrarDialogos();
   }
 
+  /** La semana que se está viendo, tal y como la espera la exportación. */
+  const laSemanaQueSeEstaViendo = (): DatosDelDocumento => ({
+    semana: semanaMostrada,
+    empleados,
+    contenido: contenidoDeLaSemana,
+    nombreDelLocal: NOMBRE_DEL_LOCAL,
+  });
+
   /**
-   * Comparte la semana que se está viendo.
+   * Exporta la semana que se está viendo por el destino que el encargado ha elegido.
    *
-   * No navega a ninguna parte ni toca la semana mostrada: al terminar —o al desistir
-   * de la hoja del sistema, que no es un fallo— el encargado sigue exactamente donde
-   * estaba. Solo se le dice algo cuando la exportación no llega a completarse.
+   * No navega a ninguna parte ni toca la semana mostrada: al terminar —o al desistir,
+   * que no es un fallo ni en la hoja del sistema ni en el selector de carpetas— el
+   * encargado sigue exactamente donde estaba. Solo se le dice algo cuando la
+   * exportación no llega a completarse, y cuando el documento queda guardado, que es
+   * lo único que no deja ninguna señal en la pantalla.
    */
-  async function compartirLaSemana() {
-    const resultado = await compartirElCuadrante({
-      semana: semanaMostrada,
-      empleados,
-      contenido: contenidoDeLaSemana,
-      nombreDelLocal: NOMBRE_DEL_LOCAL,
-    });
+  async function exportarLaSemana(destino: 'compartir' | 'guardar') {
+    setEligiendoDestino(false);
+
+    const resultado =
+      destino === 'compartir'
+        ? await compartirElCuadrante(laSemanaQueSeEstaViendo())
+        : await guardarElCuadrante(laSemanaQueSeEstaViendo());
 
     if (resultado.tipo === 'fallo') setAvisoDeLaExportacion(resultado.mensaje);
     else if (resultado.tipo === 'sin-plantilla') setAvisoDeLaExportacion(MENSAJE_SIN_PLANTILLA);
+    else if (resultado.tipo === 'guardado') setAvisoDeLaExportacion(MENSAJE_GUARDADO);
   }
 
-  function confirmarEliminacion() {
+  /**
+   * Lo que el encargado acaba de confirmar. Los tres actos que pasan por aquí
+   * —eliminar un turno, vaciar la celda y pegar encima— hacen desaparecer contenido
+   * sin deshacer posible, y por eso comparten diálogo.
+   */
+  function confirmarElActo() {
     if (!celdaAbierta || !dialogo) return;
     const { empleado, dia } = celdaAbierta;
 
     if (dialogo.tipo === 'eliminar-turno') datos.eliminarTurno(empleado.id, dia, dialogo.turno.id);
     else if (dialogo.tipo === 'eliminar-contenido') datos.vaciarCelda(empleado.id, dia);
+    else if (dialogo.tipo === 'pegar-encima') datos.pegarEnCelda(empleado.id, dia, dialogo.copiado);
 
     cerrarDialogos();
   }
@@ -214,7 +271,7 @@ export function PantallaCuadrante({
         onSemanaSiguiente={() => setSemanaMostrada(semanaSiguiente(semanaMostrada))}
         onVolverALaSemanaEnCurso={() => setSemanaMostrada(semanaActual)}
         onIrAEmpleados={onIrAEmpleados}
-        onCompartirLaSemana={compartirLaSemana}
+        onExportarLaSemana={() => setEligiendoDestino(true)}
       />
 
       <RejillaCuadrante
@@ -235,6 +292,7 @@ export function PantallaCuadrante({
         visible={dialogo?.tipo === 'acciones'}
         titulo={tituloDeLaCelda}
         contenido={contenidoDeLaCeldaAbierta}
+        hayAlgoCopiado={copiado !== null}
         onElegir={elegirAccion}
         onCancelar={cerrarDialogos}
       />
@@ -249,11 +307,24 @@ export function PantallaCuadrante({
         />
       ) : null}
 
-      <ConfirmacionEliminar
-        visible={dialogo?.tipo === 'eliminar-turno' || dialogo?.tipo === 'eliminar-contenido'}
+      <ConfirmacionIrreversible
+        visible={
+          dialogo?.tipo === 'eliminar-turno' ||
+          dialogo?.tipo === 'eliminar-contenido' ||
+          dialogo?.tipo === 'pegar-encima'
+        }
         mensaje={mensajeDeConfirmacion(dialogo, contenidoDeLaCeldaAbierta)}
-        onConfirmar={confirmarEliminacion}
+        textoConfirmar={dialogo?.tipo === 'pegar-encima' ? TEXTO_PEGAR : undefined}
+        onConfirmar={confirmarElActo}
         onDesistir={cerrarDialogos}
+      />
+
+      <HojaDestinosDeExportacion
+        visible={eligiendoDestino}
+        semana={formatearRangoDeSemana(semanaMostrada)}
+        onCompartir={() => exportarLaSemana('compartir')}
+        onGuardar={() => exportarLaSemana('guardar')}
+        onCancelar={() => setEligiendoDestino(false)}
       />
 
       <AvisoDeLaExportacion
@@ -265,12 +336,34 @@ export function PantallaCuadrante({
 }
 
 function mensajeDeConfirmacion(dialogo: Dialogo | null, contenido: ContenidoCelda): string {
+  if (dialogo?.tipo === 'pegar-encima') {
+    // La pregunta nombra lo que va a desaparecer, no lo que va a entrar: es lo que el
+    // encargado se juega si se ha equivocado de celda.
+    return `¿Pegar aquí y sustituir ${loQueHayEnLaCelda(contenido)}?`;
+  }
   if (dialogo?.tipo === 'eliminar-turno') {
     return `¿Eliminar el turno planificado de ${describirTurno(dialogo.turno)}?`;
   }
   if (contenido.tipo === 'ausencia') return `¿Eliminar la ${PALABRA_AUSENCIA.toLowerCase()}?`;
   if (contenido.tipo === 'vacaciones') return `¿Eliminar las ${PALABRA_VACACIONES.toLowerCase()}?`;
   return '¿Eliminar el contenido de la celda?';
+}
+
+/** Lo que hay ahora en la celda, con sus horas y con las palabras completas. */
+function loQueHayEnLaCelda(contenido: ContenidoCelda): string {
+  switch (contenido.tipo) {
+    case 'ausencia':
+      return `la ${PALABRA_AUSENCIA.toLowerCase()} de este día`;
+    case 'vacaciones':
+      return `las ${PALABRA_VACACIONES.toLowerCase()} de este día`;
+    case 'turnos':
+      return contenido.turnos.length === 1
+        ? `el turno planificado de ${describirTurno(contenido.turnos[0])}`
+        : `los turnos planificados de ${contenido.turnos.map(describirTurno).join(' y de ')}`;
+    case 'vacia':
+      // No llega a mostrarse: sobre una celda vacía se pega sin preguntar nada.
+      return 'el contenido de la celda';
+  }
 }
 
 const estilos = StyleSheet.create({

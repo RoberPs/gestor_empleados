@@ -70,7 +70,8 @@ describe('Exportar la semana desde el cuadrante', () => {
     await tocar('accion-semana-siguiente');
     expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('14/09/2026 - 20/09/2026');
 
-    await tocar('accion-compartir-la-semana');
+    await tocar('accion-exportar-la-semana');
+    await tocar('accion-compartir-el-cuadrante');
 
     // Se comparte el cuadrante de esa semana, no el de la semana en curso.
     const html = mockImprimir.mock.calls[0][0].html as string;
@@ -90,8 +91,9 @@ describe('Exportar la semana desde el cuadrante', () => {
     expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('17/08/2026 - 23/08/2026');
 
     // Se le sigue ofreciendo, y no se le pide ninguna confirmación adicional.
-    expect(screen.getByTestId('accion-compartir-la-semana')).toBeTruthy();
-    await tocar('accion-compartir-la-semana');
+    expect(screen.getByTestId('accion-exportar-la-semana')).toBeTruthy();
+    await tocar('accion-exportar-la-semana');
+    await tocar('accion-compartir-el-cuadrante');
 
     expect(screen.queryByTestId('confirmacion-eliminar')).toBeNull();
     expect(mockCompartir).toHaveBeenCalledTimes(1);
@@ -102,13 +104,17 @@ describe('Exportar la semana desde el cuadrante', () => {
     await renderizarCuadrante();
 
     // En la semana en curso.
-    expect(screen.getByTestId('accion-compartir-la-semana')).toBeTruthy();
+    expect(screen.getByTestId('accion-exportar-la-semana')).toBeTruthy();
     await tocar('accion-semana-siguiente');
     // Y en una futura.
-    expect(screen.getByTestId('accion-compartir-la-semana')).toBeTruthy();
+    expect(screen.getByTestId('accion-exportar-la-semana')).toBeTruthy();
 
-    // Un solo toque: no hay ningún menú ni paso intermedio antes de compartir.
-    await tocar('accion-compartir-la-semana');
+    // Un solo toque para llegar a los dos destinos: lo único que hay entre el icono y
+    // la hoja del sistema es elegir a dónde va la semana, que es lo que este change
+    // añadió a propósito.
+    await tocar('accion-exportar-la-semana');
+    expect(screen.getByTestId('destinos-de-exportacion')).toBeTruthy();
+    await tocar('accion-compartir-el-cuadrante');
     expect(mockCompartir).toHaveBeenCalledTimes(1);
   });
 
@@ -116,7 +122,7 @@ describe('Exportar la semana desde el cuadrante', () => {
     await renderizarCuadrante({ plantilla: [] });
 
     expect(screen.getByTestId('estado-vacio')).toBeTruthy();
-    expect(screen.queryByTestId('accion-compartir-la-semana')).toBeNull();
+    expect(screen.queryByTestId('accion-exportar-la-semana')).toBeNull();
     // Lo que sí se le ofrece es dar de alta al primer empleado.
     expect(screen.getByTestId('accion-dar-de-alta-primer-empleado')).toBeTruthy();
   });
@@ -127,7 +133,8 @@ describe('Exportar la semana desde el cuadrante', () => {
     await renderizarCuadrante();
     await tocar('accion-semana-siguiente');
 
-    await tocar('accion-compartir-la-semana');
+    await tocar('accion-exportar-la-semana');
+    await tocar('accion-compartir-el-cuadrante');
 
     expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('14/09/2026 - 20/09/2026');
     expect(screen.queryByTestId('aviso-de-la-exportacion')).toBeNull();
@@ -138,7 +145,8 @@ describe('Exportar la semana desde el cuadrante', () => {
     await renderizarCuadrante();
     await tocar('accion-semana-anterior');
 
-    await tocar('accion-compartir-la-semana');
+    await tocar('accion-exportar-la-semana');
+    await tocar('accion-compartir-el-cuadrante');
 
     expect(screen.getByTestId('mensaje-de-la-exportacion')).toHaveTextContent(
       MENSAJE_NO_SE_PUDO_COMPARTIR,
@@ -162,7 +170,7 @@ describe('Exportar la semana desde el cuadrante', () => {
     const { empleado } = await renderizarCuadrante({ plantilla: VEINTE });
 
     // La acción es visible y pulsable, con el área mínima de 44 puntos.
-    const accion = screen.getByTestId('accion-compartir-la-semana');
+    const accion = screen.getByTestId('accion-exportar-la-semana');
     expect(accion).toBeTruthy();
     const estilo = [accion.props.style].flat(Infinity).filter(Boolean) as Record<string, number>[];
     const combinado = Object.assign({}, ...estilo) as Record<string, number>;
@@ -188,8 +196,8 @@ describe('Exportar la semana desde el cuadrante', () => {
     expect(screen.getByTestId('icono-de-compartir')).toBeTruthy();
     expect(screen.queryByText('Compartir')).toBeNull();
     // Y quien no ve el icono oye la acción entera.
-    expect(screen.getByTestId('accion-compartir-la-semana').props.accessibilityLabel).toBe(
-      'Compartir la semana',
+    expect(screen.getByTestId('accion-exportar-la-semana').props.accessibilityLabel).toBe(
+      'Compartir o guardar la semana',
     );
 
     // Los dos textos de navegación siguen ahí, enteros y a una sola línea: no
@@ -211,7 +219,8 @@ describe('Exportar la semana desde el cuadrante', () => {
     expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('31/08/2026 - 06/09/2026');
 
     // Y compartir no mueve la semana ni un día.
-    await tocar('accion-compartir-la-semana');
+    await tocar('accion-exportar-la-semana');
+    await tocar('accion-compartir-el-cuadrante');
     expect(screen.getByTestId('rango-de-la-semana')).toHaveTextContent('31/08/2026 - 06/09/2026');
   });
 });

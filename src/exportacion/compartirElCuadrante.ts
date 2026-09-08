@@ -1,29 +1,43 @@
 /**
- * La tubería que saca el documento del dispositivo: HTML → PDF → hoja de compartir.
+ * La tubería que saca el documento del dispositivo: HTML → PDF → el destino que elija
+ * el encargado.
  *
- * Es el **único** punto de la app que habla con `expo-print` y con `expo-sharing`, y
- * a propósito no decide nada sobre el documento: ni qué filas lleva, ni qué dice
- * cada celda, ni qué campos de la ficha pueden aparecer. Todo eso vive en
- * `documentoDelCuadrante.ts`, que es código puro y se comprueba entero en la suite.
- * Aquí solo queda lo que no se puede comprobar sin un móvil delante.
+ * Es el **único** punto de la app que habla con `expo-print`, con `expo-sharing` y con
+ * el sistema de ficheros, y a propósito no decide nada sobre el documento: ni qué
+ * filas lleva, ni qué dice cada celda, ni qué campos de la ficha pueden aparecer. Todo
+ * eso vive en `documentoDelCuadrante.ts`, que es código puro y se comprueba entero en
+ * la suite. Aquí solo queda lo que no se puede comprobar sin un móvil delante.
  *
- * La app no elige destino por el encargado, no guarda el PDF en ninguna carpeta suya
- * y no lo envía a ningún servicio: lo entrega a la hoja del sistema y se aparta. Lo
- * que `expo-print` deja en la caché temporal del propio sistema no es una copia de
- * la app ni sobrevive a nada.
+ * ── LOS DOS DESTINOS ────────────────────────────────────────────────────────
+ * El documento se produce una sola vez y sale por uno de dos caminos, que el
+ * encargado elige:
  *
- * `expo-file-system` aparece aquí porque las dos piezas anteriores no encajan solas:
+ * - **Compartir**: se entrega a la hoja del sistema, que es la que decide a dónde va.
+ *   La app no elige aplicación de destino y no envía nada a ningún servicio.
+ * - **Guardar**: se le pide una carpeta con el selector del sistema y se escribe allí.
+ *   La app no da por hecho ninguna carpeta ni escribe fuera de la que él eligió.
+ *
+ * Lo que los dos comparten —componer el HTML, producir el PDF y resolver el nombre de
+ * la semana— está en un solo sitio: que el documento guardado sea el mismo que el
+ * compartido, con las mismas reglas de privacidad, no puede depender de que nadie
+ * toque una de las dos ramas.
+ *
+ * `expo-file-system` aparece aquí porque las piezas anteriores no encajan solas:
  * `expo-print` deja el PDF en una carpeta de trabajo suya que queda **fuera de la
- * carpeta de la app**, y ahí no llega nadie más. Se usa para escribir el PDF dentro
- * de la caché de la app —de paso con el nombre de la semana— y para nada más: no se
- * lee ni se escribe ningún otro fichero.
+ * carpeta de la app**, y ahí no llega nadie más. Se usa para escribir el PDF dentro de
+ * la caché de la app —de paso con el nombre de la semana— antes de compartirlo, y para
+ * escribirlo en la carpeta que el encargado elige al guardarlo. Para nada más.
  */
 
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
-import { componerDocumentoDelCuadrante, type DatosDelDocumento } from './documentoDelCuadrante';
+import {
+  componerDocumentoDelCuadrante,
+  type DatosDelDocumento,
+  type DocumentoDelCuadrante,
+} from './documentoDelCuadrante';
 
 /**
  * Cómo acabó el intento de exportar. La pantalla no necesita saber nada más: no hay
@@ -32,21 +46,30 @@ import { componerDocumentoDelCuadrante, type DatosDelDocumento } from './documen
 export type ResultadoDeExportar =
   /** Se produjo el documento y se ofreció por la hoja de compartir. */
   | { readonly tipo: 'compartido' }
+  /** Se produjo el documento y quedó escrito en la carpeta que eligió el encargado. */
+  | { readonly tipo: 'guardado' }
+  /** Se abrió el selector de carpetas y el encargado lo cerró sin elegir ninguna. */
+  | { readonly tipo: 'desistido' }
   /** No hay ningún empleado dado de alta: no hay cuadrante que compartir. */
   | { readonly tipo: 'sin-plantilla' }
-  /** No se pudo producir o no se pudo compartir. Lleva ya el texto que se muestra. */
+  /** No se pudo producir, no se pudo compartir o no se pudo guardar. Lleva ya el texto. */
   | { readonly tipo: 'fallo'; readonly mensaje: string };
 
 /**
- * Los dos textos que ve el encargado cuando algo no sale.
+ * Los textos que ve el encargado cuando algo no sale, y el que le confirma que su
+ * documento ha quedado guardado.
  *
  * Están escritos en lenguaje corriente y no dicen ni módulo, ni código, ni ruta: al
  * encargado no le sirve de nada saber que falló el motor de impresión, y un mensaje
- * técnico solo le hace pensar que ha roto algo.
+ * técnico solo le hace pensar que ha roto algo. El de guardado tampoco nombra la
+ * carpeta: la eligió él, y una ruta del sistema no le diría dónde ha dejado nada.
  */
 export const MENSAJE_SIN_PLANTILLA = 'No hay nada que compartir: todavía no hay empleados.';
 export const MENSAJE_NO_SE_PUDO_COMPARTIR =
   'No se ha podido compartir el cuadrante. Inténtalo de nuevo.';
+export const MENSAJE_NO_SE_PUDO_GUARDAR =
+  'No se ha podido guardar el cuadrante. Inténtalo de nuevo.';
+export const MENSAJE_GUARDADO = 'El cuadrante ha quedado guardado donde lo has puesto.';
 
 /** Lo que el PDF se lleva de tipo cuando la hoja del sistema pregunta. */
 const TIPO_PDF = 'application/pdf';
@@ -55,12 +78,51 @@ const TIPO_PDF = 'application/pdf';
  * Deja constancia en el terminal de desarrollo de qué paso falló y por qué.
  *
  * **No es telemetría ni analítica**: no sale del ordenador de quien desarrolla y en
- * el móvil del encargado no se ve por ninguna parte. Está aquí porque `expo-print` y
- * `expo-sharing` solo fallan en el dispositivo, donde no hay test que lo cuente, y
- * sin esto un fallo de exportación es un mensaje corriente y ninguna pista.
+ * el móvil del encargado no se ve por ninguna parte. Está aquí porque `expo-print`,
+ * `expo-sharing` y el selector de carpetas solo fallan en el dispositivo, donde no hay
+ * test que lo cuente, y sin esto un fallo de exportación es un mensaje corriente y
+ * ninguna pista.
  */
 function anotarElFallo(paso: string, causa: unknown): void {
   console.warn(`[exportación] falló en «${paso}»:`, causa);
+}
+
+/** El PDF ya producido: sus bytes y el nombre con el que llega a su destino. */
+interface PdfProducido {
+  readonly base64: string;
+  readonly nombreDeFichero: string;
+}
+
+/**
+ * Produce el PDF del documento ya compuesto, o dice por qué no se puede.
+ *
+ * Es el paso que comparten los dos destinos, y el que garantiza que lo guardado y lo
+ * compartido sean el mismo documento: hay una sola composición y una sola impresión.
+ */
+async function producirElPdf(
+  documento: DocumentoDelCuadrante,
+  mensajeSiFalla: string,
+): Promise<PdfProducido | ResultadoDeExportar> {
+  // Se pide el PDF **en base64** y no como fichero: el fichero que el motor de
+  // impresión escribe por su cuenta está en una carpeta a la que la app no tiene
+  // acceso, así que lo que se recoge son sus bytes, no su ruta.
+  let pdfEnBase64: string | undefined;
+  try {
+    pdfEnBase64 = (await Print.printToFileAsync({ html: documento.html, base64: true })).base64;
+  } catch (causa) {
+    anotarElFallo('producir el PDF', causa);
+    return { tipo: 'fallo', mensaje: mensajeSiFalla };
+  }
+  if (!pdfEnBase64) {
+    anotarElFallo('producir el PDF', 'el motor de impresión no devolvió el contenido del PDF');
+    return { tipo: 'fallo', mensaje: mensajeSiFalla };
+  }
+
+  return { base64: pdfEnBase64, nombreDeFichero: documento.nombreDeFichero };
+}
+
+function esUnResultado(pdf: PdfProducido | ResultadoDeExportar): pdf is ResultadoDeExportar {
+  return 'tipo' in pdf;
 }
 
 /**
@@ -89,24 +151,12 @@ export async function compartirElCuadrante(datos: DatosDelDocumento): Promise<Re
     return { tipo: 'fallo', mensaje: MENSAJE_NO_SE_PUDO_COMPARTIR };
   }
 
-  // Se pide el PDF **en base64** y no como fichero: el fichero que el motor de
-  // impresión escribe por su cuenta está en una carpeta a la que la app no tiene
-  // acceso, así que lo que se recoge son sus bytes, no su ruta.
-  let pdfEnBase64: string | undefined;
-  try {
-    pdfEnBase64 = (await Print.printToFileAsync({ html: documento.html, base64: true })).base64;
-  } catch (causa) {
-    anotarElFallo('producir el PDF', causa);
-    return { tipo: 'fallo', mensaje: MENSAJE_NO_SE_PUDO_COMPARTIR };
-  }
-  if (!pdfEnBase64) {
-    anotarElFallo('producir el PDF', 'el motor de impresión no devolvió el contenido del PDF');
-    return { tipo: 'fallo', mensaje: MENSAJE_NO_SE_PUDO_COMPARTIR };
-  }
+  const pdf = await producirElPdf(documento, MENSAJE_NO_SE_PUDO_COMPARTIR);
+  if (esUnResultado(pdf)) return pdf;
 
   let uriCompartible: string;
   try {
-    uriCompartible = escribirEnLaCarpetaDeLaApp(pdfEnBase64, documento.nombreDeFichero);
+    uriCompartible = escribirEnLaCarpetaDeLaApp(pdf.base64, pdf.nombreDeFichero);
   } catch (causa) {
     anotarElFallo('escribir el PDF en la carpeta de la app', causa);
     return { tipo: 'fallo', mensaje: MENSAJE_NO_SE_PUDO_COMPARTIR };
@@ -116,12 +166,53 @@ export async function compartirElCuadrante(datos: DatosDelDocumento): Promise<Re
     await Sharing.shareAsync(uriCompartible, {
       mimeType: TIPO_PDF,
       UTI: 'com.adobe.pdf',
-      dialogTitle: documento.nombreDeFichero,
+      dialogTitle: pdf.nombreDeFichero,
     });
     return { tipo: 'compartido' };
   } catch (causa) {
     anotarElFallo('abrir la hoja de compartir', causa);
     return { tipo: 'fallo', mensaje: MENSAJE_NO_SE_PUDO_COMPARTIR };
+  }
+}
+
+/**
+ * Produce el PDF de la semana y lo escribe en la carpeta que elija el encargado.
+ *
+ * El PDF se produce **antes** de pedir la carpeta: si no se puede producir, el
+ * encargado se entera sin haber recorrido el selector para nada. Es el mismo orden que
+ * sigue compartir, que pregunta por la hoja del sistema antes de imprimir.
+ *
+ * Se escribe directamente en la carpeta elegida, sin pasar por la caché de la app: la
+ * caché la necesita compartir porque la hoja del sistema exige un fichero dentro de la
+ * carpeta de la app, pero aquí el destino ya es una carpeta a la que la app ha recibido
+ * acceso, y un fichero intermedio solo dejaría una copia que luego habría que limpiar.
+ */
+export async function guardarElCuadrante(datos: DatosDelDocumento): Promise<ResultadoDeExportar> {
+  const documento = componerDocumentoDelCuadrante(datos);
+  if (documento.tipo === 'sin-plantilla') return { tipo: 'sin-plantilla' };
+
+  const pdf = await producirElPdf(documento, MENSAJE_NO_SE_PUDO_GUARDAR);
+  if (esUnResultado(pdf)) return pdf;
+
+  // Cerrar el selector sin elegir carpeta no es un fallo: es desistir, y de eso no se
+  // avisa con un error. El selector lo señala rechazando la promesa, que es también
+  // como avisaría de un fallo de verdad; por eso los dos casos salen por aquí y lo que
+  // los distingue es que uno no ha escrito nada y el otro tampoco.
+  let carpeta: Directory;
+  try {
+    carpeta = await Directory.pickDirectoryAsync();
+  } catch (causa) {
+    anotarElFallo('pedir la carpeta donde guardar', causa);
+    return { tipo: 'desistido' };
+  }
+
+  try {
+    const destino = carpeta.createFile(`${pdf.nombreDeFichero}.pdf`, TIPO_PDF);
+    destino.write(pdf.base64, { encoding: 'base64' });
+    return { tipo: 'guardado' };
+  } catch (causa) {
+    anotarElFallo('escribir el PDF en la carpeta elegida', causa);
+    return { tipo: 'fallo', mensaje: MENSAJE_NO_SE_PUDO_GUARDAR };
   }
 }
 

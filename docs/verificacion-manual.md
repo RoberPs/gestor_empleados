@@ -698,3 +698,76 @@ código ya está en `src/ui/__tests__/identidadVisual.test.tsx`.
   confundirse en gris. Cómo sale eso de una impresora concreta, con su tóner y su
   papel, solo se ve imprimiendo.
 - **Última comprobación**: pendiente.
+
+### Guardar la semana en la carpeta que elige el encargado
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento se puede guardar en el dispositivo
+- **Cómo se comprueba**: con la plantilla dada de alta, tocar el icono de exportar de
+  la cabecera, elegir «Guardar una copia» y, en el selector de carpetas del sistema,
+  elegir una carpeta cualquiera —Descargas sirve—. Después, salir de la app y abrir
+  esa carpeta con el gestor de ficheros del móvil.
+- **Qué se debe observar**: el selector que se abre es el del propio sistema, con sus
+  carpetas y su navegación de siempre. Al volver, la app dice que el cuadrante ha
+  quedado guardado, sin enseñar ninguna ruta, y el cuadrante sigue en la misma semana.
+  En la carpeta elegida está el fichero `Cuadrante dd-mm-aaaa a dd-mm-aaaa.pdf`, con
+  las fechas de esa semana, y se abre como un PDF normal.
+- **Por qué está aquí**: `Directory.pickDirectoryAsync` no existe fuera del
+  dispositivo. La suite comprueba que no se pide carpeta cuando no hay nada que
+  guardar, que el fichero lleva el nombre de la semana y que se escribe una sola vez
+  dentro de la carpeta devuelta; que el selector se abra de verdad y que el fichero
+  acabe donde el encargado dijo, solo se ve en el móvil.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**. Se abre el selector de carpetas del sistema, el fichero queda en la carpeta
+  elegida con el nombre de la semana y se abre como un PDF normal.
+
+### Desistir de guardar
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento se puede guardar en el dispositivo
+- **Cómo se comprueba**: tocar el icono de exportar, elegir «Guardar una copia» y
+  cerrar el selector de carpetas con la flecha de volver o el gesto de atrás, sin
+  elegir ninguna carpeta.
+- **Qué se debe observar**: vuelve al cuadrante, en la misma semana, sin ningún aviso
+  ni mensaje de error. En ninguna carpeta del móvil aparece un PDF nuevo de esa semana.
+- **Por qué está aquí**: el selector avisa de que se ha cerrado sin elegir carpeta de
+  la misma forma en que avisaría de un fallo suyo, así que la app trata los dos casos
+  como desistimiento —antes que asustar al encargado con un error que no ha causado—.
+  Que eso se vea así de verdad al cerrar el selector solo se comprueba en el móvil.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**. Cerrar el selector sin elegir carpeta devuelve al cuadrante, en la misma semana,
+  sin aviso ni error y sin dejar ningún fichero.
+
+### El guardado falla
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: El documento se puede guardar en el dispositivo
+- **Cómo se comprueba**: elegir «Guardar una copia» y, en el selector, elegir una
+  carpeta en la que el sistema no deje escribir —una tarjeta de memoria protegida
+  contra escritura, o una carpeta de solo lectura—. Si no hay ninguna a mano, vale
+  con retirarle a la app el acceso concedido y repetir.
+- **Qué se debe observar**: la app dice que no se ha podido guardar el cuadrante, en
+  lenguaje corriente: sin nombre de módulo, sin código de error y sin ninguna ruta de
+  fichero. Al cerrar el aviso sigue en el cuadrante, en la misma semana.
+- **Por qué está aquí**: la suite comprueba el mensaje y que no se escriba nada, pero
+  el fallo de escritura de verdad lo produce el sistema de ficheros del dispositivo.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**. El aviso se muestra en lenguaje corriente, sin módulo, código ni ruta de fichero,
+  y al cerrarlo sigue en el cuadrante en la misma semana.
+
+### Copiar un turno y repetirlo con una mano
+
+- **Capability**: cuadrante-semanal
+- **Requisito**: Copiar el contenido de una celda y pegarlo en otra
+- **Cómo se comprueba**: planificar una semana de verdad en el móvil del encargado.
+  Copiar el turno del lunes de un empleado y pegarlo en sus otros cuatro días
+  laborables, sujetando el móvil con una mano. Repetirlo en una celda que ya tenga
+  turno, para ver la confirmación.
+- **Qué se debe observar**: la hoja de acciones de una celda con dos turnos ofrece las
+  ocho acciones —incluidas copiar y pegar, separadas al final— y todas se leen enteras
+  y se tocan sin apuntar. Pegar en una celda vacía es un solo toque y no pregunta
+  nada. Pegar sobre una celda con contenido pregunta antes, nombrando lo que va a
+  desaparecer. Planificar los cinco días sale más rápido que tecleando las horas.
+- **Por qué está aquí**: la suite comprueba que las ocho acciones están, que no se
+  truncan y que conservan sus 44 puntos; que la hoja se maneje con una mano y con
+  prisa, que es el principio de uso real, solo se ve usándola.
+- **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**. La hoja de acciones con dos turnos ofrece las ocho acciones, todas legibles y
+  pulsables con una mano; pegar en celda vacía es un solo toque y pegar encima
+  confirma antes. Planificar la semana copiando sale más rápido que tecleando.

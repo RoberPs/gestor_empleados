@@ -64,7 +64,7 @@ interface Props {
   readonly onVolverALaSemanaEnCurso: () => void;
   readonly onIrAEmpleados: () => void;
   /** Comparte la semana mostrada. Se ofrece en cualquier semana, pasada o futura. */
-  readonly onCompartirLaSemana: () => void;
+  readonly onExportarLaSemana: () => void;
 }
 
 export function CabeceraSemana({
@@ -74,7 +74,7 @@ export function CabeceraSemana({
   onSemanaSiguiente,
   onVolverALaSemanaEnCurso,
   onIrAEmpleados,
-  onCompartirLaSemana,
+  onExportarLaSemana,
 }: Props) {
   const { top } = useSafeAreaInsets();
 
@@ -143,10 +143,10 @@ export function CabeceraSemana({
           navega con el lector de pantalla oye su etiqueta entera.
         */}
         <Pressable
-          testID="accion-compartir-la-semana"
+          testID="accion-exportar-la-semana"
           accessibilityRole="button"
-          accessibilityLabel="Compartir la semana"
-          onPress={onCompartirLaSemana}
+          accessibilityLabel="Compartir o guardar la semana"
+          onPress={onExportarLaSemana}
           style={[estilos.boton, estilos.botonDeCompartir]}
         >
           <IconoDeCompartir testID="icono-de-compartir" color={colores.accion} />
