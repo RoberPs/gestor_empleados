@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gestor_empleados",
+    "name": "Cuadrante",
     "slug": "gestor_empleados",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,9 +8,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.los24cafe.cuadrante"
     },
     "android": {
+      "package": "com.los24cafe.cuadrante",
+      "versionCode": 2,
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -26,6 +30,13 @@
       "expo-router",
       "expo-sqlite",
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ba72bdee-37f8-450b-91e0-5c5aeb25e9bf"
+      }
+    },
+    "owner": "rober360"
   }
 }

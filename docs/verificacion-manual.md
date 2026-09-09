@@ -57,10 +57,14 @@ lanza desde dentro de Expo Go, con su pantalla de carga por delante— y lo que 
 observaría sería el arranque de Expo Go, no el del producto.
 
 Esos escenarios quedan pendientes hasta que exista un build instalable en el
-dispositivo. Hoy el proyecto no tiene ninguno configurado: no hay `android/`, ni
-`ios/`, ni `eas.json`. El icono sí está definido en `app.json`. Cuando se decida
-cómo se construye el binario, esos escenarios se comprueban sobre la app instalada
-y se anota aquí la fecha y el dispositivo.
+dispositivo. Ya se ha decidido cómo se construye: un APK con EAS Build, según
+`despliegue.md`. Las carpetas `android/` e `ios/` siguen sin existir porque se
+generan durante el build y no se versionan.
+
+Esos escenarios se comprueban **sobre la copia instalada en el móvil del
+desarrollador**, con empleados de prueba, y se anota aquí la fecha y el
+dispositivo. No hace falta —ni conviene— usar el móvil del encargado: las dos
+instalaciones son el mismo APK y no comparten datos.
 
 ## Escenarios
 
