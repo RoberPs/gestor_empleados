@@ -45,11 +45,15 @@ más ancha no demuestra nada sobre el ancho mínimo.
 
 ## Escenarios que necesitan un build instalable
 
-> **`npm run web` no sirve para mirar esta app.** Desde que la plantilla vive en
-> SQLite, en el navegador la app arranca directamente en el aviso «No se han podido
-> abrir tus datos», y es correcto: `expo-sqlite` no funciona ahí. El porqué está en
-> el `design.md` de `add-employee-storage` — Risks. Todo lo que hay debajo se
-> comprueba en el móvil, con `npx expo start` y Expo Go.
+> **`npm run web` ya no arranca en el aviso de error, pero sigue sin servir para
+> comprobar estos escenarios.** Hasta el 09/09/2026 el navegador mostraba «No se han
+> podido abrir tus datos» porque `expo-sqlite` no funciona ahí. Desde el change
+> `add-web-demo` hay una implementación propia para el navegador —SQLite en
+> WebAssembly— y la app arranca en él con normalidad. Lo que se ve entonces es **la
+> demo web**: con su distintivo, su plantilla de ejemplo y su acción de reinicio, que
+> no existen en la app instalada. Sirve para comprobar los escenarios de `demo-web`
+> —agrupados al final de este documento—, no los del producto. Todo lo que hay debajo
+> se comprueba en el móvil, con `npx expo start` y Expo Go.
 
 Casi todo se comprueba con el servidor de desarrollo (`npx expo start`) y la app
 abierta en Expo Go. Hay una excepción: los escenarios sobre **cómo arranca la app**
@@ -805,3 +809,156 @@ código ya está en `src/ui/__tests__/identidadVisual.test.tsx`.
 - **Última comprobación**: 08/09/2026, Expo Go en el móvil del encargado — **correcto**. La hoja de acciones con dos turnos ofrece las ocho acciones, todas legibles y
   pulsables con una mano; pegar en celda vacía es un solo toque y pegar encima
   confirma antes. Planificar la semana copiando sale más rápido que tecleando.
+
+## Escenarios de la demo web
+
+Estos no se comprueban en el móvil con Expo Go, sino **en el navegador de un móvil**,
+sobre la demo publicada o sobre `npm run web`. Están aquí por la misma razón estrecha
+que los del adaptador de `expo-sqlite`: la pieza que hay que ejercitar —IndexedDB, el
+diálogo de impresión del navegador, recargar una página— no existe fuera de un
+navegador de verdad.
+
+Lo que sí queda comprobado en `npm test`: que el SQL de la app se comporta igual sobre
+el SQLite del navegador que sobre el de los tests
+(`contratoDeLasImplementaciones.test.ts`), que los bytes de la base van y vuelven sin
+perder nada (`bdSqlJs.test.ts`), que el ejemplo cae siempre en la semana en curso
+(`ejemploDeLaDemo.test.ts`), que ningún módulo de la demo sabe hablar por la red
+(`privacidadDeLaDemo.test.ts`) y que la app instalada no lleva nada de la demo dentro
+(`laAppInstalada.test.tsx`).
+
+**Navegadores de referencia**: Chrome en Android y Safari en iOS. Los dos, porque el
+diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
+
+### Abrir la demo por primera vez
+
+- **Capability**: demo-web
+- **Requisito**: La demo se abre desde un enlace sin instalar nada
+- **Cómo se comprueba**: abrir el enlace de la demo en el navegador de un móvil donde no
+  se haya abierto nunca, en vertical.
+- **Qué se debe observar**: se llega al cuadrante directamente. No se pide instalar nada,
+  ni registrarse, ni aceptar ningún permiso, y no aparece por el camino ninguna pantalla
+  de bienvenida, resumen o menú: como mucho, el fondo en blanco mientras carga.
+- **Por qué está aquí**: que no haya pantalla intermedia solo se ve mirando el arranque.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
+  sitio ya construido (`npm run demo:build`) — **correcto**. Se llega al cuadrante sin pantalla intermedia, sin
+  errores en consola y sin franja de scroll horizontal (scrollWidth = clientWidth = 360).
+  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+
+### Lo planificado en la demo sigue ahí al recargar
+
+- **Capability**: demo-web
+- **Requisito**: Lo que se prueba en la demo se conserva al recargar
+- **Cómo se comprueba**: planificar a un empleado un turno de `09:00` a `17:00` el jueves
+  y recargar la página. Volver a abrir el enlace un rato después, sin borrar los datos
+  del navegador.
+- **Qué se debe observar**: la celda de ese empleado en la columna del jueves sigue
+  mostrando `09:00` y `17:00`, las dos veces. No ha hecho falta guardar nada a mano.
+- **Por qué está aquí**: la suite comprueba que los bytes de la base van y vuelven
+  intactos; que lleguen a IndexedDB y se recuperen al recargar necesita un navegador.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
+  sitio ya construido (`npm run demo:build`) — **correcto**. Un empleado dado de alta en la demo sigue ahí tras
+  recargar la página y también al abrirla en otra pestaña del mismo navegador.
+  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+
+### La demo se puede usar aunque el navegador no deje conservar nada
+
+- **Capability**: demo-web
+- **Requisito**: Lo que se prueba en la demo se conserva al recargar
+- **Cómo se comprueba**: abrir la demo en una ventana privada. Planificar, editar una
+  ficha y exportar la semana.
+- **Qué se debe observar**: se ve el cuadrante de ejemplo y todo funciona con normalidad.
+  No aparece el aviso «No se han podido abrir tus datos» ni ningún mensaje técnico. Al
+  recargar se pierde lo escrito, y eso es lo correcto.
+- **Por qué está aquí**: el modo privado solo existe en un navegador.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
+  sitio ya construido (`npm run demo:build`) — **correcto**. Con `indexedDB` inutilizable, la demo muestra el
+  cuadrante de ejemplo y se usa con normalidad: no aparece el aviso «No se han podido
+  abrir tus datos» ni ningún error.
+  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+
+### Volver al estado de ejemplo
+
+- **Capability**: demo-web
+- **Requisito**: La demo se puede devolver al estado de ejemplo
+- **Cómo se comprueba**: planificar varias celdas, dar de alta a alguien y borrar a otro.
+  Tocar «Reiniciar» en la banda de la demo y confirmar.
+- **Qué se debe observar**: el cuadrante vuelve a mostrar la plantilla de ejemplo y la
+  semana en curso planificada, sin rastro de lo escrito antes. La confirmación avisa de
+  que se va a borrar lo que haya.
+- **Por qué está aquí**: reiniciar recarga la página, que no ocurre fuera de un navegador.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
+  sitio ya construido (`npm run demo:build`) — **correcto**. Confirmar el reinicio devuelve la plantilla de ejemplo
+  y borra lo que se había escrito.
+  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+
+### Desistir de volver al estado de ejemplo
+
+- **Capability**: demo-web
+- **Requisito**: La demo se puede devolver al estado de ejemplo
+- **Cómo se comprueba**: tocar «Reiniciar» y cerrar la confirmación con «Cancelar».
+- **Qué se debe observar**: no se borra nada y la demo sigue exactamente como estaba.
+- **Por qué está aquí**: mismo motivo que el anterior.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
+  sitio ya construido (`npm run demo:build`) — **correcto**. Cancelar la confirmación no borra nada.
+  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+
+### Se ve que es una demo
+
+- **Capability**: demo-web
+- **Requisito**: La demo se identifica como demo
+- **Cómo se comprueba**: abrir la demo en un móvil de 360 puntos de ancho, en vertical.
+- **Qué se debe observar**: se lee que es una demostración y que no se escriban datos
+  reales. La banda no tapa el cuadrante ni hay que cerrarla para usar la app, y la
+  semana completa —las siete columnas— se sigue viendo sin desplazarse en horizontal.
+- **Por qué está aquí**: que la banda no le robe sitio a la semana solo se ve mirando.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho — **parcial**.
+  La banda con el aviso y el botón «Reiniciar» aparece sobre el cuadrante y la semana
+  completa se sigue viendo sin scroll horizontal (scrollWidth = clientWidth = 360).
+  **Falta el ojo**: si el aviso se lee de un vistazo y no estorba, en un móvil de verdad.
+
+### Dos personas prueban la demo por separado
+
+- **Capability**: demo-web
+- **Requisito**: Cada navegador tiene su propia demo
+- **Cómo se comprueba**: planificar turnos en la demo desde un móvil y abrir después el
+  mismo enlace por primera vez desde otro móvil distinto.
+- **Qué se debe observar**: el segundo móvil ve la demo en su estado de ejemplo, sin
+  rastro de lo que hizo el primero.
+- **Por qué está aquí**: hacen falta dos navegadores de verdad.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
+  sitio ya construido (`npm run demo:build`) — **correcto**. Un segundo navegador ve la demo en su estado de
+  ejemplo, sin rastro de lo escrito en el primero.
+  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+
+### Exportar la semana desde un navegador
+
+- **Capability**: exportacion-cuadrante
+- **Requisito**: La entrega del documento donde no hay hoja de compartir ni selector de
+  carpetas
+- **Cómo se comprueba**: con la plantilla de ejemplo cargada, exportar la semana desde el
+  cuadrante, en Chrome Android y en Safari iOS. Probar los dos botones.
+- **Qué se debe observar**: se abre el diálogo del navegador con **el documento del
+  cuadrante**, no con la pantalla que se estaba viendo. El nombre propuesto para el
+  fichero es `Cuadrante dd-mm-aaaa a dd-mm-aaaa`. Desde el diálogo se puede guardar como
+  PDF. Al terminar o al cancelar se sigue en el cuadrante, en la misma semana, y **no se
+  afirma que haya quedado guardado**.
+- **Por qué está aquí**: la suite comprueba el contenido del documento y que con la
+  plantilla vacía no se produce ninguno; el diálogo de impresión no existe fuera de un
+  navegador, y es donde se vería si se imprime la página en lugar del documento.
+- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
+  sitio ya construido (`npm run demo:build`) — **correcto**. Lo que se manda a imprimir es el documento del
+  cuadrante —con su tabla y su cabecera—, no la pantalla; el nombre propuesto es
+  `Cuadrante 07-09-2026 a 13-09-2026`; no se afirma que haya quedado guardado y se sigue
+  en el cuadrante, en la misma semana. **Falta Safari iOS**, cuyo diálogo es distinto.
+  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+
+### El enlace deja de dar acceso
+
+- **Capability**: demo-web
+- **Requisito**: La demo se puede retirar
+- **Cómo se comprueba**: retirar la demo siguiendo `despliegue.md` y abrir después el
+  enlace que se había repartido.
+- **Qué se debe observar**: el enlace no da acceso a la demo. La app instalada en el móvil
+  sigue funcionando igual, con sus datos intactos.
+- **Por qué está aquí**: solo se comprueba retirando de verdad un sitio publicado.
+- **Última comprobación**: pendiente.

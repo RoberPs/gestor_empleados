@@ -1,0 +1,4 @@
+# La demo se reparte a mano, por enlace, a quien se le quiera enseñar la app.
+# No tiene por qué aparecer en ningún buscador.
+User-agent: *
+Disallow: /

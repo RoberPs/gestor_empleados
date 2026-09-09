@@ -1,9 +1,21 @@
 # Despliegue
 
-Esta app no se despliega en ningún servidor. Todo lo que hace ocurre dentro del móvil:
+Aquí se despliegan **dos cosas distintas**, y conviene no confundirlas:
+
+1. **El producto**: un APK que se instala en el móvil del encargado. Es lo que cubre
+   casi todo este documento.
+2. **La demo web**: un sitio estático que sirve para enseñarle la app a un cliente sin
+   entregarle el binario. Vive al final, en «La demo web», y **no es un canal de uso
+   real**: nadie planifica en ella el cuadrante de su local.
+
+El producto no se despliega en ningún servidor. Todo lo que hace ocurre dentro del móvil:
 la plantilla y el cuadrante viven en SQLite en el almacenamiento privado de la aplicación,
-y no hay API, ni cuentas, ni base de datos remota. Desplegar aquí significa **una sola cosa**:
+y no hay API, ni cuentas, ni base de datos remota. Desplegarlo significa **una sola cosa**:
 producir un APK e instalarlo en el móvil del encargado.
+
+Que exista la demo no cambia nada de eso: es una copia de escaparate, con datos
+inventados, que se sirve como ficheros estáticos y no tiene servidor de aplicación
+detrás ni guarda nada de nadie.
 
 Se instala el **mismo APK** en dos móviles:
 
@@ -186,3 +198,63 @@ de la aplicación más el desbloqueo del móvil»— y hoy el bloqueo de pantall
 
 `expo-updates` no está instalado, así que no hay actualizaciones por aire: cada cambio es un
 APK nuevo entregado a mano.
+
+## La demo web
+
+Sirve para que un cliente potencial pruebe la app desde su móvil, con un enlace, sin
+instalar nada y sin que el APK salga de nuestras manos. Es una vía de demostración
+comercial: el producto sigue siendo el binario.
+
+### Qué lleva dentro, y qué no
+
+- Arranca con una plantilla de ejemplo de catorce personas y la **semana en curso** ya
+  planificada, con turnos, una ausencia y unas vacaciones. Las fechas se calculan el día
+  que se abre, así que la demo no envejece.
+- Todos los datos son **inventados** (`src/demo/ejemploDeLaDemo.ts`): ni un nombre,
+  teléfono o email de la plantilla real puede acabar en un sitio público. Los teléfonos
+  son del rango de ficción que usan los tests y los emails van a `ejemplo.es`.
+- Lo que el cliente toque se guarda **en su propio navegador** (IndexedDB) y no sale de
+  ahí. Cada navegador tiene su demo; dos personas no comparten nada.
+- Lleva una banda que avisa de que es una demostración y un botón para devolverla a su
+  estado inicial.
+- **No lleva analítica**, ni contraseña, ni forma de saber quién ha entrado.
+
+### Publicar
+
+```
+npm run demo:build
+```
+
+Deja el sitio en `dist/`. El script copia antes el motor de SQLite
+(`public/sql-wasm.wasm`, 643 KB) desde `node_modules`, para que no se quede atrás
+respecto a la versión de `sql.js` del `package.json`.
+
+Ese `dist/` se sube a un alojamiento estático. En Netlify basta con arrastrar la carpeta
+o usar su CLI; en Vercel o Cloudflare Pages el paso equivalente. Lo único que hace falta
+del alojamiento es servir ficheros, dar un enlace y poder borrarlo.
+
+**Publicarla sin indexar**: la demo se reparte a mano y no tiene por qué aparecer en un
+buscador. El sitio incluye `robots.txt` excluyéndolo entero, y conviene añadir en el
+alojamiento la cabecera `X-Robots-Tag: noindex` (en Netlify, un fichero `_headers`).
+
+Antes de dar el enlace a nadie, abrirlo en un móvil de verdad y con datos móviles: la
+primera apertura descarga el motor de SQLite, y es la única vez que se nota.
+
+### Retirar la demo
+
+**Borrar el sitio en el alojamiento.** El enlace deja de resolver y no queda nada que
+deshacer. Lo que se hubiera quedado en el navegador de quien la probó son datos
+inventados.
+
+Retirarla no afecta a ninguna app instalada. Conviene hacerlo cuando la conversación con
+ese cliente termine: una demo publicada y olvidada es una copia del producto ahí fuera
+sin motivo.
+
+### Lo que la demo no puede enseñar
+
+- **La hoja de compartir y el selector de carpetas del móvil**: en el navegador no
+  existen. Exportar abre el diálogo de impresión, desde donde se guarda como PDF. Es el
+  mismo documento, con las mismas reglas de privacidad, pero el camino se ve distinto.
+- **El arranque desde el icono**, porque no hay icono.
+- **Lo que todavía no está construido**, como el registro de horas realmente trabajadas.
+  La demo enseña lo que hay; lo que no existe, no se simula.

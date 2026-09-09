@@ -34,45 +34,30 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
 import {
+  MENSAJE_NO_SE_PUDO_COMPARTIR,
+  MENSAJE_NO_SE_PUDO_GUARDAR,
+  TIPO_PDF,
+  type ResultadoDeExportar,
+} from './resultadoDeExportar';
+import {
   componerDocumentoDelCuadrante,
   type DatosDelDocumento,
   type DocumentoDelCuadrante,
 } from './documentoDelCuadrante';
 
 /**
- * Cómo acabó el intento de exportar. La pantalla no necesita saber nada más: no hay
- * códigos, ni causas, ni rutas de fichero que enseñar.
+ * El desenlace de una exportación y sus textos viven en `resultadoDeExportar.ts`, que no
+ * importa nada del sistema: así la demo web, que exporta por otra vía, usa exactamente
+ * los mismos y no hay dos sitios donde arreglar una errata. Se vuelven a exportar desde
+ * aquí para que quien ya los pedía a este módulo los siga encontrando.
  */
-export type ResultadoDeExportar =
-  /** Se produjo el documento y se ofreció por la hoja de compartir. */
-  | { readonly tipo: 'compartido' }
-  /** Se produjo el documento y quedó escrito en la carpeta que eligió el encargado. */
-  | { readonly tipo: 'guardado' }
-  /** Se abrió el selector de carpetas y el encargado lo cerró sin elegir ninguna. */
-  | { readonly tipo: 'desistido' }
-  /** No hay ningún empleado dado de alta: no hay cuadrante que compartir. */
-  | { readonly tipo: 'sin-plantilla' }
-  /** No se pudo producir, no se pudo compartir o no se pudo guardar. Lleva ya el texto. */
-  | { readonly tipo: 'fallo'; readonly mensaje: string };
-
-/**
- * Los textos que ve el encargado cuando algo no sale, y el que le confirma que su
- * documento ha quedado guardado.
- *
- * Están escritos en lenguaje corriente y no dicen ni módulo, ni código, ni ruta: al
- * encargado no le sirve de nada saber que falló el motor de impresión, y un mensaje
- * técnico solo le hace pensar que ha roto algo. El de guardado tampoco nombra la
- * carpeta: la eligió él, y una ruta del sistema no le diría dónde ha dejado nada.
- */
-export const MENSAJE_SIN_PLANTILLA = 'No hay nada que compartir: todavía no hay empleados.';
-export const MENSAJE_NO_SE_PUDO_COMPARTIR =
-  'No se ha podido compartir el cuadrante. Inténtalo de nuevo.';
-export const MENSAJE_NO_SE_PUDO_GUARDAR =
-  'No se ha podido guardar el cuadrante. Inténtalo de nuevo.';
-export const MENSAJE_GUARDADO = 'El cuadrante ha quedado guardado donde lo has puesto.';
-
-/** Lo que el PDF se lleva de tipo cuando la hoja del sistema pregunta. */
-const TIPO_PDF = 'application/pdf';
+export {
+  MENSAJE_GUARDADO,
+  MENSAJE_NO_SE_PUDO_COMPARTIR,
+  MENSAJE_NO_SE_PUDO_GUARDAR,
+  MENSAJE_SIN_PLANTILLA,
+  type ResultadoDeExportar,
+} from './resultadoDeExportar';
 
 /**
  * Deja constancia en el terminal de desarrollo de qué paso falló y por qué.

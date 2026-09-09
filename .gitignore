@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Motor de SQLite de la demo web: lo copia `scripts/copiarSqlWasm.js` desde
+# node_modules en cada build, así que no tiene que vivir en el repositorio.
+public/*.wasm
