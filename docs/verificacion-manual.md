@@ -839,10 +839,11 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
   ni registrarse, ni aceptar ningún permiso, y no aparece por el camino ninguna pantalla
   de bienvenida, resumen o menú: como mucho, el fondo en blanco mientras carga.
 - **Por qué está aquí**: que no haya pantalla intermedia solo se ve mirando el arranque.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
-  sitio ya construido (`npm run demo:build`) — **correcto**. Se llega al cuadrante sin pantalla intermedia, sin
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. Se llega al cuadrante sin pantalla intermedia, sin
   errores en consola y sin franja de scroll horizontal (scrollWidth = clientWidth = 360).
-  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+  Antes se había comprobado en Chromium headless a 360 puntos de ancho sobre el sitio
+  construido en local, y el móvil lo confirma.
 
 ### Lo planificado en la demo sigue ahí al recargar
 
@@ -855,10 +856,11 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
   mostrando `09:00` y `17:00`, las dos veces. No ha hecho falta guardar nada a mano.
 - **Por qué está aquí**: la suite comprueba que los bytes de la base van y vuelven
   intactos; que lleguen a IndexedDB y se recuperen al recargar necesita un navegador.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
-  sitio ya construido (`npm run demo:build`) — **correcto**. Un empleado dado de alta en la demo sigue ahí tras
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. Un empleado dado de alta en la demo sigue ahí tras
   recargar la página y también al abrirla en otra pestaña del mismo navegador.
-  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+  Antes se había comprobado en Chromium headless a 360 puntos de ancho sobre el sitio
+  construido en local, y el móvil lo confirma.
 
 ### La demo se puede usar aunque el navegador no deje conservar nada
 
@@ -870,11 +872,12 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
   No aparece el aviso «No se han podido abrir tus datos» ni ningún mensaje técnico. Al
   recargar se pierde lo escrito, y eso es lo correcto.
 - **Por qué está aquí**: el modo privado solo existe en un navegador.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
-  sitio ya construido (`npm run demo:build`) — **correcto**. Con `indexedDB` inutilizable, la demo muestra el
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. Con `indexedDB` inutilizable, la demo muestra el
   cuadrante de ejemplo y se usa con normalidad: no aparece el aviso «No se han podido
   abrir tus datos» ni ningún error.
-  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+  Antes se había comprobado en Chromium headless a 360 puntos de ancho sobre el sitio
+  construido en local, y el móvil lo confirma.
 
 ### Volver al estado de ejemplo
 
@@ -886,10 +889,11 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
   semana en curso planificada, sin rastro de lo escrito antes. La confirmación avisa de
   que se va a borrar lo que haya.
 - **Por qué está aquí**: reiniciar recarga la página, que no ocurre fuera de un navegador.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
-  sitio ya construido (`npm run demo:build`) — **correcto**. Confirmar el reinicio devuelve la plantilla de ejemplo
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. Confirmar el reinicio devuelve la plantilla de ejemplo
   y borra lo que se había escrito.
-  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+  Antes se había comprobado en Chromium headless a 360 puntos de ancho sobre el sitio
+  construido en local, y el móvil lo confirma.
 
 ### Desistir de volver al estado de ejemplo
 
@@ -898,9 +902,10 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
 - **Cómo se comprueba**: tocar «Reiniciar» y cerrar la confirmación con «Cancelar».
 - **Qué se debe observar**: no se borra nada y la demo sigue exactamente como estaba.
 - **Por qué está aquí**: mismo motivo que el anterior.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
-  sitio ya construido (`npm run demo:build`) — **correcto**. Cancelar la confirmación no borra nada.
-  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. Cancelar la confirmación no borra nada.
+  Antes se había comprobado en Chromium headless a 360 puntos de ancho sobre el sitio
+  construido en local, y el móvil lo confirma.
 
 ### Se ve que es una demo
 
@@ -911,10 +916,10 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
   reales. La banda no tapa el cuadrante ni hay que cerrarla para usar la app, y la
   semana completa —las siete columnas— se sigue viendo sin desplazarse en horizontal.
 - **Por qué está aquí**: que la banda no le robe sitio a la semana solo se ve mirando.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho — **parcial**.
-  La banda con el aviso y el botón «Reiniciar» aparece sobre el cuadrante y la semana
-  completa se sigue viendo sin scroll horizontal (scrollWidth = clientWidth = 360).
-  **Falta el ojo**: si el aviso se lee de un vistazo y no estorba, en un móvil de verdad.
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. La banda con el aviso y el botón
+  «Reiniciar» se lee de un vistazo, no estorba para usar el cuadrante y la semana
+  completa se sigue viendo sin desplazarse en horizontal.
 
 ### Dos personas prueban la demo por separado
 
@@ -925,10 +930,11 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
 - **Qué se debe observar**: el segundo móvil ve la demo en su estado de ejemplo, sin
   rastro de lo que hizo el primero.
 - **Por qué está aquí**: hacen falta dos navegadores de verdad.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
-  sitio ya construido (`npm run demo:build`) — **correcto**. Un segundo navegador ve la demo en su estado de
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. Un segundo navegador ve la demo en su estado de
   ejemplo, sin rastro de lo escrito en el primero.
-  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+  Antes se había comprobado en Chromium headless a 360 puntos de ancho sobre el sitio
+  construido en local, y el móvil lo confirma.
 
 ### Exportar la semana desde un navegador
 
@@ -945,12 +951,13 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
 - **Por qué está aquí**: la suite comprueba el contenido del documento y que con la
   plantilla vacía no se produce ninguno; el diálogo de impresión no existe fuera de un
   navegador, y es donde se vería si se imprime la página en lugar del documento.
-- **Última comprobación**: 09/09/2026, Chromium headless a 360 puntos de ancho sobre el
-  sitio ya construido (`npm run demo:build`) — **correcto**. Lo que se manda a imprimir es el documento del
+- **Última comprobación**: 09/09/2026, Android en dos navegadores distintos, sobre la
+  demo ya publicada en Netlify — **correcto**. Lo que se manda a imprimir es el documento del
   cuadrante —con su tabla y su cabecera—, no la pantalla; el nombre propuesto es
   `Cuadrante 07-09-2026 a 13-09-2026`; no se afirma que haya quedado guardado y se sigue
   en el cuadrante, en la misma semana. **Falta Safari iOS**, cuyo diálogo es distinto.
-  **Falta comprobarlo en un móvil de verdad**, que es donde se va a enseñar.
+  Antes se había comprobado en Chromium headless a 360 puntos de ancho sobre el sitio
+  construido en local, y el móvil lo confirma.
 
 ### El enlace deja de dar acceso
 
@@ -961,4 +968,6 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
 - **Qué se debe observar**: el enlace no da acceso a la demo. La app instalada en el móvil
   sigue funcionando igual, con sus datos intactos.
 - **Por qué está aquí**: solo se comprueba retirando de verdad un sitio publicado.
-- **Última comprobación**: pendiente.
+- **Última comprobación**: pendiente. La demo está **publicada en Netlify** desde el
+  09/09/2026 y se está enseñando, así que este escenario no se puede comprobar todavía:
+  se cierra el día que se retire, que es cuando toca comprobarlo.

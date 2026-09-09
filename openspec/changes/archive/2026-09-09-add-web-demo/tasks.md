@@ -88,7 +88,7 @@
 
 ## 8. Publicación
 
-- [ ] 8.1 Publicar el sitio estático en el alojamiento elegido (design.md — D8), con `robots.txt`
+- [x] 8.1 Publicar el sitio estático en el alojamiento elegido (design.md — D8), con `robots.txt`
       y `X-Robots-Tag: noindex`. Verificar abriendo el enlace en un móvil real por datos
       móviles, y comprobar cuánto tarda la primera apertura.
 - [x] 8.2 Reescribir la parte de `docs/despliegue.md` que dice que la app no se despliega en
@@ -101,7 +101,7 @@
 
 ## 9. Cierre
 
-- [ ] 9.1 Repasar la demo a ojo contra la app instalada, pantalla por pantalla, prestando
+- [x] 9.1 Repasar la demo a ojo contra la app instalada, pantalla por pantalla, prestando
       atención a las cifras de ancho fijo y a la legibilidad de la plantilla completa que exige
       `identidad-visual`. Anotar lo comprobado en `docs/verificacion-manual.md`.
 - [x] 9.2 Verificar que `npm test` y `npm run typecheck` quedan verdes y que la app en Android
@@ -120,3 +120,18 @@ semana en curso, que lo escrito sobrevive a recargar, que otro navegador no ve n
 que sin almacenamiento sigue usándose, y que exportar manda a imprimir el documento y no
 la pantalla. Queda para el móvil: la primera apertura con datos móviles, la legibilidad
 del aviso y el diálogo de impresión de Safari iOS.
+
+### Cerradas después de archivar (09/09/2026)
+
+La demo se publicó en **Netlify** y se probó en un móvil **Android con dos navegadores
+distintos**, sobre el sitio ya publicado: arranca en el cuadrante con el ejemplo de la
+semana en curso, lo escrito sobrevive a recargar, el aviso de la banda se lee de un vistazo
+sin estorbar, la semana entera se ve sin scroll horizontal y exportar entrega el documento
+con su nombre de siempre. Con eso quedan cerradas **8.1** y **9.1**, y sus escenarios
+actualizados en `docs/verificacion-manual.md`.
+
+Sigue abierta **8.3**: el escenario «El enlace deja de dar acceso» solo se puede comprobar
+retirando la demo, y la demo se está enseñando. Se cierra el día que se retire.
+
+Sigue faltando también **Safari iOS** en el escenario «Exportar la semana desde un
+navegador»: su diálogo de impresión es distinto al de Android y no se ha probado.

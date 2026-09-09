@@ -233,6 +233,11 @@ Ese `dist/` se sube a un alojamiento estático. En Netlify basta con arrastrar l
 o usar su CLI; en Vercel o Cloudflare Pages el paso equivalente. Lo único que hace falta
 del alojamiento es servir ficheros, dar un enlace y poder borrarlo.
 
+**Dónde está publicada hoy**: en **Netlify**, desde el 09/09/2026. Comprobada en un móvil
+Android con dos navegadores distintos, sobre el sitio ya publicado. Es el alojamiento para
+el que sirve el `_headers` de este repositorio: si algún día se mueve a Vercel, esa
+cabecera deja de aplicarse y el `noindex` habría que declararlo de otra forma.
+
 **Publicarla sin indexar**: la demo se reparte a mano y no tiene por qué aparecer en un
 buscador. El sitio incluye `robots.txt` excluyéndolo entero, y conviene añadir en el
 alojamiento la cabecera `X-Robots-Tag: noindex` (en Netlify, un fichero `_headers`).
