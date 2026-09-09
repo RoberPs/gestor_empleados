@@ -1,11 +1,11 @@
 /**
  * Pegar en una celda, en la capa de datos.
  *
- * Se comprueba contra las **dos** implementaciones que la app compone —la de memoria
- * que inyectan los tests de pantalla y la que la app usa sobre SQLite— porque las
- * celdas del cuadrante viven en memoria en las dos: `crearAlmacenSobreSqlite` solo
- * cambia de dónde sale la plantilla. Si algún día las celdas bajan a la base de
- * datos, este mismo fichero es el que tiene que seguir pasando.
+ * Se comprueba contra las **dos** implementaciones que la app compone: la de memoria
+ * que inyectan los tests de pantalla y la que la app usa sobre SQLite. Ya no guardan
+ * las celdas en el mismo sitio —una en un `Map`, la otra en la base de datos—, y
+ * justo por eso este fichero vale para las dos: lo que afirma es el comportamiento
+ * de la interfaz, que no cambia con lo que haya debajo.
  */
 
 import {

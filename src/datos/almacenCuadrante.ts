@@ -1,29 +1,35 @@
 /**
  * Capa de acceso a datos del cuadrante y del panel de empleados.
  *
- * ── QUÉ SOBREVIVE AL CIERRE DE LA APP Y QUÉ NO ──────────────────────────────
- * Debajo de la interfaz `AlmacenCuadrante` conviven hoy dos cosas:
+ * ── QUÉ SOBREVIVE AL CIERRE DE LA APP ───────────────────────────────────────
+ * **Todo lo que el encargado escribe.** Debajo de la interfaz `AlmacenCuadrante`
+ * hay dos almacenes, y en la app los dos van contra el mismo fichero de SQLite:
  *
- * - **La plantilla y las fichas van contra SQLite** y se conservan en el
- *   dispositivo: nombre, teléfono, email y nota siguen ahí al reabrir la app. Lo
- *   implementa `sqlite/almacenEmpleadosSqlite.ts`; este fichero solo lo compone.
- * - **Las celdas del cuadrante siguen en memoria y se pierden al cerrar la app**:
- *   turnos planificados, ausencias y vacaciones. Su persistencia es el change de
- *   turnos, todavía por hacer. Hasta entonces, reabrir la app deja la plantilla
- *   intacta y el cuadrante vacío.
+ * - **La plantilla y las fichas**: nombre, puesto, teléfono, email, nota y motivo de
+ *   la ausencia. Lo implementa `sqlite/almacenEmpleadosSqlite.ts`.
+ * - **Las celdas del cuadrante**: turnos planificados, ausencias y vacaciones, de
+ *   cualquier semana. Lo implementa `sqlite/almacenCuadranteSqlite.ts`.
  *
- * La interfaz no distingue entre las dos: ni el cuadrante ni el panel de empleados
- * acceden a los datos por ninguna otra vía —no importan este fichero para leer
- * estructuras internas, no guardan estado propio de turnos, de plantilla ni de
- * ficha, y no conocen SQLite ni ningún store—, así que llevar las celdas a SQLite
- * tampoco tocará ni un componente.
+ * Este fichero no guarda nada: solo compone los dos y deja la rejilla armada. Nada
+ * de eso depende de que el encargado guarde a mano ni de cómo cierre la app: una
+ * escritura queda conservada en cuanto termina.
+ *
+ * Lo único que **no** sobrevive es lo copiado al portapapeles, que vive en
+ * `src/ui/loCopiado.ts` y no pasa por aquí. Es deliberado: la spec de
+ * `cuadrante-semanal` lo exige así.
+ *
+ * La interfaz no distingue entre los dos almacenes: ni el cuadrante ni el panel de
+ * empleados acceden a los datos por ninguna otra vía —no importan este fichero para
+ * leer estructuras internas, no guardan estado propio de turnos, de plantilla ni de
+ * ficha, y no conocen SQLite ni ningún store—.
  *
  * `crearAlmacenEnMemoria` no se borra: es lo que los tests de pantalla inyectan con
  * `instalarAlmacen` para partir de un estado conocido sin tocar ninguna base de
  * datos.
  *
  * La baja de un empleado es un borrado real, no una marca de inactivo, y se lleva
- * sus celdas de cualquier semana, también las pasadas.
+ * sus celdas de cualquier semana, también las pasadas. Sobre SQLite eso lo hace el
+ * `ON DELETE CASCADE` del esquema, no un recorrido semana por semana.
  * ────────────────────────────────────────────────────────────────────────────
  */
 
@@ -44,8 +50,10 @@ import { sanearCampo, sePuedeGuardarElNombre } from '../dominio/empleado';
 import { ordenarEmpleadosPorNombre } from '../dominio/orden';
 import { ordenarPorHoraDeInicio } from '../dominio/turno';
 import { agruparEnRangos, diasDelRango, type RangoDeVacaciones } from '../dominio/vacaciones';
+import type { AlmacenCeldas, CeldasConContenido } from './almacenCeldas';
 import type { AlmacenEmpleados } from './almacenEmpleados';
 import type { BaseDeDatos } from './sqlite/bd';
+import { crearAlmacenCeldasSqlite } from './sqlite/almacenCuadranteSqlite';
 import { crearAlmacenEmpleadosSqlite } from './sqlite/almacenEmpleadosSqlite';
 
 /** Contenido de una semana entera: para cada empleado, sus siete días. */
@@ -248,14 +256,12 @@ export function crearAlmacenEmpleadosEnMemoria(): AlmacenEmpleados {
 }
 
 /**
- * Compone el almacén que consume la pantalla: la plantilla la atiende `empleados`
- * —contra SQLite en la app, en memoria en los tests de pantalla— y las celdas del
- * cuadrante viven en memoria hasta el change de turnos.
+ * Las celdas del cuadrante en memoria: se pierden al cerrar la app.
  *
- * Ya no hay ajustes que componer: el nombre del local dejó de ser un dato guardado
- * y vive fijo en el código, junto al logo, en `src/ui/CabeceraSemana.tsx`.
+ * La app **no** las usa —las suyas van contra SQLite—, pero los tests de pantalla
+ * sí: les da un cuadrante conocido sin tocar ninguna base de datos.
  */
-export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadrante {
+export function crearAlmacenCeldasEnMemoria(): AlmacenCeldas {
   const celdas = new Map<string, ContenidoCelda>();
   const oyentes = new Set<() => void>();
   let siguienteIdDeTurno = 1;
@@ -298,16 +304,21 @@ export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadr
     });
   }
 
-  const almacen: AlmacenCuadrante = {
-    listarEmpleados: (...argumentos) => empleados.listarEmpleados(...argumentos),
-    leerEmpleado: (...argumentos) => empleados.leerEmpleado(...argumentos),
-    altaEmpleado: (...argumentos) => empleados.altaEmpleado(...argumentos),
-    editarNombre: (...argumentos) => empleados.editarNombre(...argumentos),
-    editarPuesto: (...argumentos) => empleados.editarPuesto(...argumentos),
-    editarTelefono: (...argumentos) => empleados.editarTelefono(...argumentos),
-    editarEmail: (...argumentos) => empleados.editarEmail(...argumentos),
-    editarNota: (...argumentos) => empleados.editarNota(...argumentos),
-    editarMotivoAusencia: (...argumentos) => empleados.editarMotivoAusencia(...argumentos),
+  const almacen: AlmacenCeldas = {
+    leerCelda,
+
+    leerContenidoDeLaSemana(semana) {
+      const dias = new Set(diasDeLaSemana(semana));
+      const contenido = new Map<IdEmpleado, Map<FechaISO, ContenidoCelda>>();
+      for (const [k, celda] of celdas) {
+        const [idEmpleado, dia] = k.split('|');
+        if (!dias.has(dia)) continue;
+        const suyas = contenido.get(idEmpleado) ?? new Map<FechaISO, ContenidoCelda>();
+        suyas.set(dia, celda);
+        contenido.set(idEmpleado, suyas);
+      }
+      return contenido;
+    },
 
     leerRangosDeVacaciones(id) {
       const dias: FechaISO[] = [];
@@ -337,29 +348,6 @@ export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadr
         if (leerCelda(id, dia).tipo === 'vacaciones') almacen.vaciarCelda(id, dia);
       }
     },
-
-    borrarEmpleado(id) {
-      // Sus celdas se van con él: no hay histórico de plantilla. Mientras vivan en
-      // memoria hay que recorrerlas a mano; cuando pasen a SQLite se irán solas por
-      // el `ON DELETE CASCADE` de su clave ajena.
-      for (const k of [...celdas.keys()]) {
-        if (k.startsWith(`${id}|`)) celdas.delete(k);
-      }
-      empleados.borrarEmpleado(id);
-    },
-
-    leerSemana(semana) {
-      const dias = diasDeLaSemana(semana);
-      const porEmpleado = new Map<IdEmpleado, ReadonlyMap<FechaISO, ContenidoCelda>>();
-      for (const empleado of almacen.listarEmpleados()) {
-        const porDia = new Map<FechaISO, ContenidoCelda>();
-        for (const dia of dias) porDia.set(dia, leerCelda(empleado.id, dia));
-        porEmpleado.set(empleado.id, porDia);
-      }
-      return porEmpleado;
-    },
-
-    leerCelda,
 
     crearTurno(idEmpleado, dia, inicio, fin) {
       const existentes = turnosDe(idEmpleado, dia);
@@ -400,13 +388,97 @@ export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadr
       escribirCelda(idEmpleado, dia, celdaConLoCopiado(contenido, nuevoId));
     },
 
+    borrarCeldasDe(id) {
+      // Sin cascada que valga, hay que recorrerlas a mano. Sobre SQLite esto no hace
+      // nada: lo hace el esquema.
+      for (const k of [...celdas.keys()]) {
+        if (k.startsWith(`${id}|`)) celdas.delete(k);
+      }
+    },
+
+    suscribirse(oyente) {
+      oyentes.add(oyente);
+      return () => {
+        oyentes.delete(oyente);
+      };
+    },
+  };
+
+  return almacen;
+}
+
+/**
+ * Compone el almacén que consume la pantalla a partir de los dos que hay debajo: la
+ * plantilla y las celdas. En la app los dos van contra el mismo fichero de SQLite;
+ * en los tests de pantalla, los dos en memoria.
+ *
+ * Aquí no se guarda nada. Lo único que este fichero pone de su parte es lo que
+ * ninguno de los dos almacenes puede saber solo: que la rejilla de una semana son
+ * los siete días de cada empleado **de la plantilla actual**, y que la baja de un
+ * empleado se lleva también sus celdas.
+ *
+ * Ya no hay ajustes que componer: el nombre del local dejó de ser un dato guardado
+ * y vive fijo en el código, junto al logo, en `src/ui/CabeceraSemana.tsx`.
+ */
+export function crearAlmacenCuadrante(
+  empleados: AlmacenEmpleados,
+  celdas: AlmacenCeldas,
+): AlmacenCuadrante {
+  const almacen: AlmacenCuadrante = {
+    listarEmpleados: (...argumentos) => empleados.listarEmpleados(...argumentos),
+    leerEmpleado: (...argumentos) => empleados.leerEmpleado(...argumentos),
+    altaEmpleado: (...argumentos) => empleados.altaEmpleado(...argumentos),
+    editarNombre: (...argumentos) => empleados.editarNombre(...argumentos),
+    editarPuesto: (...argumentos) => empleados.editarPuesto(...argumentos),
+    editarTelefono: (...argumentos) => empleados.editarTelefono(...argumentos),
+    editarEmail: (...argumentos) => empleados.editarEmail(...argumentos),
+    editarNota: (...argumentos) => empleados.editarNota(...argumentos),
+    editarMotivoAusencia: (...argumentos) => empleados.editarMotivoAusencia(...argumentos),
+
+    leerRangosDeVacaciones: (...argumentos) => celdas.leerRangosDeVacaciones(...argumentos),
+    contarDiasConContenido: (...argumentos) => celdas.contarDiasConContenido(...argumentos),
+    marcarRangoDeVacaciones: (...argumentos) => celdas.marcarRangoDeVacaciones(...argumentos),
+    eliminarRangoDeVacaciones: (...argumentos) => celdas.eliminarRangoDeVacaciones(...argumentos),
+
+    borrarEmpleado(id) {
+      // Sus celdas se van con él: no hay histórico de plantilla. Primero las celdas
+      // y después la ficha, para que la plantilla no llegue a quedarse sin el
+      // empleado mientras sus celdas siguen ahí.
+      celdas.borrarCeldasDe(id);
+      empleados.borrarEmpleado(id);
+    },
+
+    leerSemana(semana) {
+      // Una sola lectura de las celdas de la semana, y la rejilla se arma aquí: los
+      // días que no traen nada son celdas vacías.
+      const dias = diasDeLaSemana(semana);
+      const conContenido: CeldasConContenido = celdas.leerContenidoDeLaSemana(semana);
+      const porEmpleado = new Map<IdEmpleado, ReadonlyMap<FechaISO, ContenidoCelda>>();
+      for (const empleado of almacen.listarEmpleados()) {
+        const suyas = conContenido.get(empleado.id);
+        const porDia = new Map<FechaISO, ContenidoCelda>();
+        for (const dia of dias) porDia.set(dia, suyas?.get(dia) ?? CELDA_VACIA);
+        porEmpleado.set(empleado.id, porDia);
+      }
+      return porEmpleado;
+    },
+
+    leerCelda: (...argumentos) => celdas.leerCelda(...argumentos),
+    crearTurno: (...argumentos) => celdas.crearTurno(...argumentos),
+    editarTurno: (...argumentos) => celdas.editarTurno(...argumentos),
+    eliminarTurno: (...argumentos) => celdas.eliminarTurno(...argumentos),
+    marcarAusencia: (...argumentos) => celdas.marcarAusencia(...argumentos),
+    marcarVacaciones: (...argumentos) => celdas.marcarVacaciones(...argumentos),
+    vaciarCelda: (...argumentos) => celdas.vaciarCelda(...argumentos),
+    pegarEnCelda: (...argumentos) => celdas.pegarEnCelda(...argumentos),
+
     suscribirse(oyente) {
       // Un solo punto de suscripción para la pantalla, aunque debajo haya dos
       // almacenes: cambie la plantilla o cambie una celda, se vuelve a pintar.
-      oyentes.add(oyente);
+      const darseDeBajaDeCeldas = celdas.suscribirse(oyente);
       const darseDeBajaDeEmpleados = empleados.suscribirse(oyente);
       return () => {
-        oyentes.delete(oyente);
+        darseDeBajaDeCeldas();
         darseDeBajaDeEmpleados();
       };
     },
@@ -417,17 +489,21 @@ export function crearAlmacenCuadrante(empleados: AlmacenEmpleados): AlmacenCuadr
 
 /** Un almacén entero en memoria, opcionalmente con una plantilla inicial. */
 export function crearAlmacenEnMemoria(nombresIniciales: readonly string[] = []): AlmacenCuadrante {
-  const almacen = crearAlmacenCuadrante(crearAlmacenEmpleadosEnMemoria());
+  const almacen = crearAlmacenCuadrante(
+    crearAlmacenEmpleadosEnMemoria(),
+    crearAlmacenCeldasEnMemoria(),
+  );
   for (const nombre of nombresIniciales) almacen.altaEmpleado(nombre);
   return almacen;
 }
 
 /**
- * El almacén de la app: la plantilla en la base de datos ya abierta y migrada, las
- * celdas del cuadrante todavía en memoria.
+ * El almacén de la app: la plantilla y el cuadrante en la base de datos ya abierta y
+ * migrada. Los dos sobre el mismo fichero, que es lo que hace que la baja de un
+ * empleado se lleve sus celdas por la cascada del esquema.
  */
 export function crearAlmacenSobreSqlite(bd: BaseDeDatos): AlmacenCuadrante {
-  return crearAlmacenCuadrante(crearAlmacenEmpleadosSqlite(bd));
+  return crearAlmacenCuadrante(crearAlmacenEmpleadosSqlite(bd), crearAlmacenCeldasSqlite(bd));
 }
 
 /**

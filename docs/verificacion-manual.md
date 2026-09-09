@@ -7,9 +7,10 @@ scroll. El resto de escenarios se comprueban en la suite automatizada (`npm test
 
 Hay una segunda razón, más estrecha, por la que algo puede acabar aquí: que la pieza
 que hay que ejercitar **no exista fuera del dispositivo**. Es el caso del adaptador
-de `expo-sqlite` (ver "El almacenamiento funciona de verdad en el dispositivo"), y
-solo de él: el SQL, las migraciones y las operaciones de empleados sí se comprueban
-en `npm test`, contra SQLite de verdad.
+de `expo-sqlite` —del que cuelgan las dos entradas "… funciona de verdad en el
+dispositivo", la de la plantilla y la del cuadrante—, y solo de él: el SQL, las
+migraciones y las operaciones de empleados y de celdas sí se comprueban en
+`npm test`, contra SQLite de verdad.
 
 ## Cómo se cita un escenario
 
@@ -56,10 +57,11 @@ no se pueden comprobar así, porque en Expo Go la app no tiene icono propio —s
 lanza desde dentro de Expo Go, con su pantalla de carga por delante— y lo que se
 observaría sería el arranque de Expo Go, no el del producto.
 
-Esos escenarios quedan pendientes hasta que exista un build instalable en el
-dispositivo. Ya se ha decidido cómo se construye: un APK con EAS Build, según
-`despliegue.md`. Las carpetas `android/` e `ios/` siguen sin existir porque se
-generan durante el build y no se versionan.
+Ese build ya existe desde el 09/09/2026: el APK con `versionCode` 3, construido con
+EAS Build según `despliegue.md`. Los escenarios que dependían de él están cerrados
+más abajo; los que siguen en «pendiente» lo están por falta de comprobación, no por
+falta de build. Las carpetas `android/` e `ios/` siguen sin existir porque se generan
+durante el build y no se versionan.
 
 Esos escenarios se comprueban **sobre la copia instalada en el móvil del
 desarrollador**, con empleados de prueba, y se anota aquí la fecha y el
@@ -85,12 +87,11 @@ distinguen dos celdas de un vistazo.
 - **Qué se debe observar**: lo primero que aparece es la rejilla del cuadrante, con
   la semana que va del lunes anterior al domingo siguiente. No se ve ninguna pantalla
   de bienvenida, resumen o menú por el camino, ni siquiera un instante.
-- **Última comprobación**: 07/09/2026, Expo Go sobre el servidor de desarrollo — **no
-  realizada**. En Expo Go la app no tiene icono propio y se relanza a través del
-  propio Expo Go, con la pantalla de carga de Expo por delante, así que el escenario
-  no se puede reproducir: ni hay icono desde el que abrir, ni se puede distinguir la
-  carga de Expo de una hipotética pantalla de bienvenida de la app. Queda pendiente
-  del primer build instalable.
+- **Última comprobación**: 09/09/2026, copia del desarrollador con el APK
+  `versionCode` 3 — **correcto**. Hasta este build no se pudo comprobar: en Expo Go
+  la app no tiene icono propio y se relanza a través del propio Expo Go, con su
+  pantalla de carga por delante, así que ni había icono desde el que abrir ni se
+  podía distinguir esa carga de una hipotética pantalla de bienvenida de la app.
 
 ### La semana completa se ve sin scroll horizontal
 
@@ -256,7 +257,36 @@ distinguen dos celdas de un vistazo.
   `Ana`, `Bruno`, `Carmen`, y la ficha de `Bruno` conserva su teléfono, su email y su
   nota. Si el adaptador estuviera mal, la plantilla aparecería vacía en la segunda
   apertura.
-- **Última comprobación**: pendiente.
+- **Última comprobación**: 09/09/2026, copia del desarrollador con el APK
+  `versionCode` 3 — **correcto**.
+
+### El cuadrante guardado funciona de verdad en el dispositivo
+
+- **Capability**: almacenamiento-cuadrante
+- **Requisito**: cubre la parte de «El cuadrante sobrevive al cierre de la app» y «Se
+  conserva el cuadrante de cualquier semana» que los tests no alcanzan.
+- **Por qué no hay test**: por lo mismo que la entrada anterior. Los siete escenarios
+  del requisito están comprobados en `src/ui/__tests__/cuadranteGuardado.test.tsx`
+  contra SQLite de verdad, cerrando y reabriendo un fichero; lo único que ahí no
+  corre es `src/datos/sqlite/bdExpoSqlite.ts`, que es el que hablará con la base de
+  datos en el móvil. Y hay una segunda mitad que un test no puede reproducir: que
+  cerrar la app **desde el selector de aplicaciones** sea de verdad equivalente a
+  reabrir el fichero.
+- **Cómo se comprueba**: **requiere un build instalable en el dispositivo** (ver
+  "Escenarios que necesitan un build instalable"). Con la app instalada y empleados
+  de prueba dados de alta: planificar una semana entera —a alguien dos turnos el
+  mismo día, a otro una ausencia, a un tercero unas vacaciones de varios días—,
+  desplazarse a la semana siguiente y planificar algo también ahí. Después cerrar la
+  app **del todo desde el selector de aplicaciones** —no basta con irse al escritorio—
+  y volver a abrirla desde su icono.
+- **Qué se debe observar**: al reabrir, la rejilla muestra exactamente lo mismo que
+  antes de cerrar: los dos turnos del mismo día en orden de hora de inicio, la
+  etiqueta `AUS`, las celdas de `VAC`, y las celdas que estaban vacías siguen vacías.
+  Al desplazarse a la semana siguiente, lo que se planificó en ella también sigue
+  ahí. No aparece ninguna pantalla de preparación ni ningún aviso, y no hay que
+  guardar nada a mano en ningún momento.
+- **Última comprobación**: 09/09/2026, copia del desarrollador con el APK
+  `versionCode` 3 — **correcto**.
 
 ### Ver la ficha de un empleado sin vacaciones y sin notas
 

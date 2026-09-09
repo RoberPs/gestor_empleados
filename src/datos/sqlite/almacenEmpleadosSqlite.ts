@@ -17,6 +17,7 @@ import { ordenarEmpleadosPorNombre } from '../../dominio/orden';
 import type { Empleado, IdEmpleado } from '../../dominio/tipos';
 import type { AlmacenEmpleados } from '../almacenEmpleados';
 import type { BaseDeDatos, ValorSql } from './bd';
+import { comoIdDeFila } from './identificadores';
 
 interface FilaEmpleado {
   readonly id: number;
@@ -55,16 +56,6 @@ function aEmpleado(fila: FilaEmpleado): Empleado {
 /** Un campo opcional se guarda como `NULL` cuando queda vacío, no como cadena vacía. */
 function campoOpcional(texto: string | undefined): ValorSql {
   return sanearCampo(texto ?? '') || null;
-}
-
-/**
- * El `id` tal y como lo entiende la tabla. Un identificador que no sea un entero no
- * corresponde a ninguna fila —los genera `AUTOINCREMENT`—, así que se trata como
- * empleado que no está, no como error.
- */
-function comoIdDeFila(id: IdEmpleado): number | null {
-  const numero = Number(id);
-  return Number.isInteger(numero) && id.trim() !== '' ? numero : null;
 }
 
 export function crearAlmacenEmpleadosSqlite(bd: BaseDeDatos): AlmacenEmpleados {

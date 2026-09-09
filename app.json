@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.los24cafe.cuadrante",
-      "versionCode": 2,
+      "versionCode": 3,
       "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

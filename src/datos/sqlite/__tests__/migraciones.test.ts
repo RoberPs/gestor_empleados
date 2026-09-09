@@ -152,6 +152,202 @@ describe('Migración 1: la tabla de empleados', () => {
   });
 });
 
+describe('Migración 4: las tablas del cuadrante', () => {
+  /** Un empleado en la base, para poder colgar celdas de él. */
+  function conUnEmpleado(bd: BaseDeDatos): number {
+    return bd.escribir(
+      'INSERT INTO empleados (nombre, nombre_comparable) VALUES (?, ?)',
+      'Ana',
+      'ana',
+    ).ultimoId;
+  }
+
+  it('una base nueva queda en la última versión con las dos tablas del cuadrante', () => {
+    const bd = baseVacia();
+
+    migrar(bd);
+
+    expect(leerVersionDelEsquema(bd)).toBe(4);
+    expect(tablas(bd)).toContain('celdas');
+    expect(tablas(bd)).toContain('turnos');
+    expect(bd.leer('SELECT * FROM celdas')).toEqual([]);
+    expect(bd.leer('SELECT * FROM turnos')).toEqual([]);
+    bd.cerrar();
+  });
+
+  it('las dos tablas tienen sus columnas', () => {
+    const bd = baseVacia();
+    migrar(bd);
+
+    const columnasDe = (tabla: string) =>
+      bd.leer<{ name: string; notnull: number }>(`PRAGMA table_info(${tabla})`);
+
+    expect(columnasDe('celdas').map((columna) => columna.name)).toEqual([
+      'empleado_id',
+      'dia',
+      'tipo',
+    ]);
+    // Las tres son obligatorias: una celda sin empleado, sin día o sin estado no es
+    // una celda.
+    expect(columnasDe('celdas').every((columna) => columna.notnull === 1)).toBe(true);
+
+    expect(columnasDe('turnos').map((columna) => columna.name)).toEqual([
+      'id',
+      'empleado_id',
+      'dia',
+      'inicio',
+      'fin',
+    ]);
+    bd.cerrar();
+  });
+
+  it('los dos índices de la lectura por semana están creados', () => {
+    const bd = baseVacia();
+    migrar(bd);
+
+    const indicesDe = (tabla: string) =>
+      bd.leer<{ name: string }>(`PRAGMA index_list(${tabla})`).map((indice) => indice.name);
+
+    expect(indicesDe('celdas')).toContain('celdas_dia');
+    expect(indicesDe('turnos')).toContain('turnos_empleado_dia');
+    bd.cerrar();
+  });
+
+  it('una celda no puede estar en dos estados a la vez', () => {
+    const bd = baseVacia();
+    migrar(bd);
+    const ana = conUnEmpleado(bd);
+    bd.escribir(
+      'INSERT INTO celdas (empleado_id, dia, tipo) VALUES (?, ?, ?)',
+      ana,
+      '2026-09-07',
+      'turnos',
+    );
+
+    // La clave primaria es lo que lo impide: dos estados serían dos filas.
+    expect(() =>
+      bd.escribir(
+        'INSERT INTO celdas (empleado_id, dia, tipo) VALUES (?, ?, ?)',
+        ana,
+        '2026-09-07',
+        'vacaciones',
+      ),
+    ).toThrow(/UNIQUE|PRIMARY/i);
+    expect(bd.leer('SELECT tipo FROM celdas')).toEqual([{ tipo: 'turnos' }]);
+    bd.cerrar();
+  });
+
+  it('una celda solo admite los tres estados que existen', () => {
+    const bd = baseVacia();
+    migrar(bd);
+    const ana = conUnEmpleado(bd);
+
+    for (const [dia, tipo] of [
+      ['2026-09-07', 'turnos'],
+      ['2026-09-08', 'ausencia'],
+      ['2026-09-09', 'vacaciones'],
+    ]) {
+      bd.escribir('INSERT INTO celdas (empleado_id, dia, tipo) VALUES (?, ?, ?)', ana, dia, tipo);
+    }
+
+    // `vacia` no es un estado guardado: una celda vacía es la ausencia de fila.
+    expect(() =>
+      bd.escribir(
+        'INSERT INTO celdas (empleado_id, dia, tipo) VALUES (?, ?, ?)',
+        ana,
+        '2026-09-10',
+        'vacia',
+      ),
+    ).toThrow(/CHECK/i);
+    expect(bd.leer('SELECT COUNT(*) AS cuantas FROM celdas')).toEqual([{ cuantas: 3 }]);
+    bd.cerrar();
+  });
+
+  it('la baja de un empleado se lleva sus celdas y sus turnos', () => {
+    const bd = baseVacia();
+    migrar(bd);
+    const ana = conUnEmpleado(bd);
+    bd.escribir(
+      'INSERT INTO celdas (empleado_id, dia, tipo) VALUES (?, ?, ?)',
+      ana,
+      '2026-09-07',
+      'turnos',
+    );
+    bd.escribir(
+      'INSERT INTO turnos (empleado_id, dia, inicio, fin) VALUES (?, ?, ?, ?)',
+      ana,
+      '2026-09-07',
+      '09:00',
+      '17:00',
+    );
+
+    bd.escribir('DELETE FROM empleados WHERE id = ?', ana);
+
+    // Una sola sentencia, sin recorrer ninguna otra tabla: lo hace la cascada, que
+    // `abrirBaseDeDatos` deja activa con `PRAGMA foreign_keys = ON`.
+    expect(bd.leer('SELECT * FROM celdas')).toEqual([]);
+    expect(bd.leer('SELECT * FROM turnos')).toEqual([]);
+    bd.cerrar();
+  });
+
+  it('vaciar una celda se lleva sus turnos', () => {
+    const bd = baseVacia();
+    migrar(bd);
+    const ana = conUnEmpleado(bd);
+    bd.escribir(
+      'INSERT INTO celdas (empleado_id, dia, tipo) VALUES (?, ?, ?)',
+      ana,
+      '2026-09-07',
+      'turnos',
+    );
+    bd.escribir(
+      'INSERT INTO turnos (empleado_id, dia, inicio, fin) VALUES (?, ?, ?, ?)',
+      ana,
+      '2026-09-07',
+      '09:00',
+      '17:00',
+    );
+
+    bd.escribir('DELETE FROM celdas WHERE empleado_id = ? AND dia = ?', ana, '2026-09-07');
+
+    // La clave ajena compuesta contra `celdas`: borrar la celda es borrar sus turnos.
+    expect(bd.leer('SELECT * FROM turnos')).toEqual([]);
+    bd.cerrar();
+  });
+
+  it('Una instalación con plantilla conserva sus fichas', () => {
+    // El almacenamiento que dejó la versión instalada de la app: la plantilla del
+    // encargado con sus fichas rellenas, en la versión 3 del esquema.
+    const bd = abrirBaseDeDatos(abrirConNodeSqlite, rutaDeFicheroDePrueba());
+    migrarCon(bd, MIGRACIONES.slice(0, 3));
+    for (const [nombre, comparable, telefono, email, nota] of FICHAS_DEL_MOVIL) {
+      bd.escribir(
+        'INSERT INTO empleados (nombre, nombre_comparable, telefono, email, nota)' +
+          ' VALUES (?, ?, ?, ?, ?)',
+        nombre,
+        comparable,
+        telefono,
+        email,
+        nota,
+      );
+    }
+    const fichasAntes = bd.leer('SELECT * FROM empleados');
+
+    // El encargado instala la versión que guarda el cuadrante.
+    migrar(bd);
+
+    expect(leerVersionDelEsquema(bd)).toBe(VERSION_DEL_ESQUEMA);
+    // Ni un empleado ni un campo de menos: la migración 4 solo crea tablas.
+    expect(bd.leer('SELECT * FROM empleados')).toEqual(fichasAntes);
+    expect(bd.leer<{ nombre: string }>('SELECT nombre FROM empleados').map((f) => f.nombre)).toEqual(
+      ['Ana', 'Bruno', 'Carmen'],
+    );
+    // Y el cuadrante empieza vacío, porque lo planificado antes nunca se guardó.
+    expect(bd.leer('SELECT * FROM celdas')).toEqual([]);
+    bd.cerrar();
+  });
+});
+
 describe('Actualización automática del almacenamiento al arrancar', () => {
   it('Abrir la app tras actualizarla conservando la plantilla', () => {
     // Lo que hay en el dispositivo: el almacenamiento que dejó la versión instalada
@@ -180,18 +376,21 @@ describe('Actualización automática del almacenamiento al arrancar', () => {
     // El encargado instala una versión posterior de la app, que necesita un
     // almacenamiento distinto: trae una migración más al final de la lista.
     const laNueva = abrirBaseDeDatos(abrirConNodeSqlite, fichero);
-    const conTurnos: Migracion = {
+    // `horas` y no `turnos`: la de turnos ya existe de verdad desde la migración 4,
+    // y lo que este escenario necesita es una tabla que **todavía** no está en la
+    // lista, como lo será la de las horas trabajadas.
+    const conHoras: Migracion = {
       descripcion: 'Una tabla que cuelga del empleado, como las que vendrán',
       aplicar: (base) =>
         base.ejecutar(`
-          CREATE TABLE turnos (
+          CREATE TABLE horas (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             empleado_id INTEGER NOT NULL REFERENCES empleados(id) ON DELETE CASCADE,
             dia         TEXT NOT NULL
           )
         `),
     };
-    migrarCon(laNueva, [...MIGRACIONES, conTurnos]);
+    migrarCon(laNueva, [...MIGRACIONES, conHoras]);
 
     // La adaptación no ha pedido nada y no se ha llevado por delante ningún dato.
     expect(leerVersionDelEsquema(laNueva)).toBe(MIGRACIONES.length + 1);
@@ -224,12 +423,13 @@ describe('Almacenamiento de una versión posterior de la app', () => {
  * antes que en ningún sitio: contra una base poblada como la suya, no contra una
  * vacía.
  *
- * El contenido del cuadrante —turnos planificados, ausencias y vacaciones— todavía
- * no vive en el esquema (`src/datos/almacenCuadrante.ts` lo explica), así que la
- * tabla que lo guardará se monta aquí a mano, igual que hace el escenario "Abrir la
- * app tras actualizarla conservando la plantilla". Lo que se afirma es lo que la
- * spec exige de una adaptación que retira datos: que retire **solo** eso y no toque
- * nada más de lo que hay en el fichero.
+ * Junto a la plantilla y a los ajustes hay una tercera tabla, `otros_datos`, montada
+ * aquí a mano: representa lo que hubiera en el fichero al margen de lo que la
+ * migración 3 toca. No se llama `celdas` —que es como se llamaba cuando el cuadrante
+ * todavía no vivía en el esquema— porque `celdas` es ya una tabla de verdad, la que
+ * crea la migración 4, y esta base se queda en la versión 2. Lo que se afirma es lo
+ * que la spec exige de una adaptación que retira datos: que retire **solo** eso y no
+ * toque nada más de lo que hay en el fichero.
  */
 const FICHAS_DEL_MOVIL = [
   ['Ana', 'ana', '600 00 00 01', 'ana@ejemplo.es', 'Prefiere mañanas'],
@@ -237,8 +437,8 @@ const FICHAS_DEL_MOVIL = [
   ['Carmen', 'carmen', '600 00 00 03', 'carmen@ejemplo.es', 'Turno partido'],
 ] as const;
 
-/** Turnos planificados, una ausencia y unas vacaciones: el cuadrante de una semana. */
-const CELDAS_DEL_MOVIL = [
+/** Filas cualesquiera que cuelgan de un empleado y que la migración 3 no debe tocar. */
+const OTROS_DATOS_DEL_MOVIL = [
   ['2026-09-07', 'turno 09:00-17:00'],
   ['2026-09-08', 'ausencia'],
   ['2026-09-09', 'vacaciones'],
@@ -263,15 +463,20 @@ function baseDelMovilEnLaVersion2(fichero: string): BaseDeDatos {
   }
 
   bd.ejecutar(`
-    CREATE TABLE celdas (
+    CREATE TABLE otros_datos (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       empleado_id INTEGER NOT NULL REFERENCES empleados(id) ON DELETE CASCADE,
       dia         TEXT NOT NULL,
       contenido   TEXT NOT NULL
     )
   `);
-  for (const [dia, contenido] of CELDAS_DEL_MOVIL) {
-    bd.escribir('INSERT INTO celdas (empleado_id, dia, contenido) VALUES (?, ?, ?)', 1, dia, contenido);
+  for (const [dia, contenido] of OTROS_DATOS_DEL_MOVIL) {
+    bd.escribir(
+      'INSERT INTO otros_datos (empleado_id, dia, contenido) VALUES (?, ?, ?)',
+      1,
+      dia,
+      contenido,
+    );
   }
 
   // El nombre que el encargado escribió el 08/09/2026, y que ahora vive en el código.
@@ -281,19 +486,20 @@ function baseDelMovilEnLaVersion2(fichero: string): BaseDeDatos {
 }
 
 describe('Migración 3: la ficha se amplía y los ajustes se retiran', () => {
-  it('el salto de la 2 a la 3 conserva la plantilla y el cuadrante, y borra los ajustes', () => {
+  it('el salto de la 2 a la 3 conserva la plantilla y lo demás, y borra los ajustes', () => {
     const bd = baseDelMovilEnLaVersion2(rutaDeFicheroDePrueba());
     const fichasAntes = bd.leer('SELECT nombre, telefono, email, nota FROM empleados');
-    const celdasAntes = bd.leer('SELECT empleado_id, dia, contenido FROM celdas');
+    const otrosAntes = bd.leer('SELECT empleado_id, dia, contenido FROM otros_datos');
     expect(leerVersionDelEsquema(bd)).toBe(2);
 
-    migrar(bd);
+    // Solo hasta la 3: lo que se mira aquí es ese salto, no el que venga después.
+    migrarCon(bd, MIGRACIONES.slice(0, 3));
 
     expect(leerVersionDelEsquema(bd)).toBe(3);
     // Ni un empleado ni una ficha de menos.
     expect(bd.leer('SELECT nombre, telefono, email, nota FROM empleados')).toEqual(fichasAntes);
-    // Ni una celda del cuadrante de menos.
-    expect(bd.leer('SELECT empleado_id, dia, contenido FROM celdas')).toEqual(celdasAntes);
+    // Ni una fila de menos en lo que no le incumbe.
+    expect(bd.leer('SELECT empleado_id, dia, contenido FROM otros_datos')).toEqual(otrosAntes);
     // Y los dos campos nuevos de la ficha, vacíos para todo el mundo.
     expect(bd.leer('SELECT puesto, motivo_ausencia FROM empleados')).toEqual(
       FICHAS_DEL_MOVIL.map(() => ({ puesto: '', motivo_ausencia: '' })),
@@ -307,7 +513,7 @@ describe('Migración 3: la ficha se amplía y los ajustes se retiran', () => {
     const bd = baseDelMovilEnLaVersion2(rutaDeFicheroDePrueba());
     const tablasAntes = tablas(bd);
 
-    migrar(bd);
+    migrarCon(bd, MIGRACIONES.slice(0, 3));
 
     // Lo único que desaparece del fichero es `ajustes`: si la migración borrase
     // cualquier otra cosa, esta comparación lo diría por su nombre.
@@ -317,8 +523,8 @@ describe('Migración 3: la ficha se amplía y los ajustes se retiran', () => {
       { nombre: 'Bruno' },
       { nombre: 'Carmen' },
     ]);
-    expect(bd.leer('SELECT contenido FROM celdas')).toEqual(
-      CELDAS_DEL_MOVIL.map(([, contenido]) => ({ contenido })),
+    expect(bd.leer('SELECT contenido FROM otros_datos')).toEqual(
+      OTROS_DATOS_DEL_MOVIL.map(([, contenido]) => ({ contenido })),
     );
     bd.cerrar();
   });

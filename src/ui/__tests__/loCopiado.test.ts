@@ -5,9 +5,14 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+import { almacen } from '../../datos/almacenCuadrante';
+import { abrirAlmacenamiento } from '../../datos/arranque';
+import { abrirConNodeSqlite, rutaDeFicheroDePrueba } from '../../pruebas/bdDePrueba';
 import { copiar, loCopiado, olvidarLoCopiado, suscribirseALoCopiado } from '../loCopiado';
 
 const hora = (horas: number, minutos = 0) => ({ horas, minutos });
+
+const LUNES = '2026-09-07';
 
 beforeEach(() => {
   olvidarLoCopiado();
@@ -51,17 +56,33 @@ describe('Lo copiado mientras la app está abierta', () => {
 
 describe('Lo copiado no sobrevive a cerrar la app', () => {
   it('Lo copiado no sobrevive a cerrar la app', () => {
+    // El escenario tiene dos mitades y las dos se comprueban aquí: que el
+    // portapapeles no vuelva, y que el cuadrante sí. Cerrar la app se lleva por
+    // delante lo que estuviera en memoria y deja intacto lo guardado; si las dos
+    // cosas vivieran en el mismo sitio, una de las dos mitades fallaría.
+    const fichero = rutaDeFicheroDePrueba();
+    abrirAlmacenamiento(abrirConNodeSqlite, fichero);
+    const ana = almacen().altaEmpleado('Ana')!;
+    almacen().crearTurno(ana.id, LUNES, hora(9), hora(17));
+    const planificadoAntes = almacen().leerCelda(ana.id, LUNES);
+
     copiar({ tipo: 'turnos', turnos: [{ inicio: hora(9), fin: hora(17) }] });
     expect(loCopiado()).not.toBeNull();
 
-    // Cerrar la app es que se lleve el proceso por delante lo que hubiera en memoria.
-    // Un módulo recién cargado es lo más cerca que se puede estar de eso sin cerrar
-    // Jest: si lo copiado se rehidratara de algún sitio, aquí volvería.
+    // Un módulo recién cargado es lo más cerca que se puede estar de cerrar la app
+    // sin cerrar Jest: si lo copiado se rehidratara de algún sitio, aquí volvería.
     jest.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    /* eslint-disable @typescript-eslint/no-var-requires */
     const recienAbierto = require('../loCopiado') as typeof import('../loCopiado');
+    const datos = require('../../datos/almacenCuadrante') as typeof import('../../datos/almacenCuadrante');
+    const arranque = require('../../datos/arranque') as typeof import('../../datos/arranque');
+    /* eslint-enable @typescript-eslint/no-var-requires */
+    arranque.abrirAlmacenamiento(abrirConNodeSqlite, fichero);
 
+    // No se le ofrece pegar: no hay nada copiado.
     expect(recienAbierto.loCopiado()).toBeNull();
+    // Y el cuadrante muestra los mismos turnos planificados que antes de cerrarla.
+    expect(datos.almacen().leerCelda(ana.id, LUNES)).toEqual(planificadoAntes);
   });
 });
 

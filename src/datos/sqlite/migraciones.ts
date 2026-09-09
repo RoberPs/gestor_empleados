@@ -127,11 +127,74 @@ const AMPLIAR_FICHA_Y_RETIRAR_AJUSTES: Migracion = {
   },
 };
 
+/**
+ * Versión 4: el cuadrante.
+ *
+ * Dos tablas y no tres —una por estado de la celda—: `PRIMARY KEY (empleado_id, dia)`
+ * es lo que impide que una celda esté en dos estados a la vez, porque no puede tener
+ * dos filas. La exclusividad que el tipo `ContenidoCelda` garantiza en el código
+ * queda garantizada también en el fichero, que es donde la spec la quiere. Con una
+ * tabla por estado, nada impediría que el mismo empleado y día tuvieran fila en dos
+ * de ellas (design.md — D1).
+ *
+ * **No hay estado `vacia`: una celda vacía es la ausencia de fila**, igual que en la
+ * tabla `ajustes` de la migración 2 no haber fila para una clave significaba que
+ * nunca se había escrito. Vaciar una celda es borrar su fila, y la cascada se lleva
+ * sus turnos.
+ *
+ * `turnos` lleva **dos** claves ajenas a propósito. La compuesta contra `celdas` es
+ * la que borra los turnos al vaciar la celda o al cambiarla de estado. La directa
+ * contra `empleados` es la que exige la regla 2 de este fichero: una tabla que se
+ * refiere a un empleado lo dice ella misma y no a través de un tercero, de modo que
+ * la cascada de la baja no depende de que `celdas` siga existiendo.
+ *
+ * El máximo de dos turnos el mismo día **no** está en el esquema: lo guardan el tipo
+ * `TurnosDelDia` y el único camino de escritura, que es el adaptador. Ponerlo aquí
+ * costaría un disparador —la única herramienta de SQLite para contar filas
+ * hermanas—, y este proyecto no tiene ninguno (design.md — D2).
+ *
+ * Las horas se guardan como texto `hh:mm` con cero delante, que es la misma forma en
+ * la que se muestran: hace legible el fichero desde cualquier herramienta de SQLite
+ * y ahorra aritmética en los dos sentidos (design.md — D3). `dia` es la `FechaISO`
+ * `aaaa-mm-dd` tal cual, así que leer una semana es un `BETWEEN` de texto correcto
+ * sin conversiones (design.md — D4).
+ *
+ * Los dos índices son para esa lectura por semana, que es la que se hace en cada
+ * repintado de la pantalla: con 20 empleados y meses planificados, recorrer las
+ * tablas enteras cada vez no hace falta.
+ */
+const CREAR_CUADRANTE: Migracion = {
+  descripcion: 'Crea las tablas del cuadrante: la celda de cada empleado y día, y sus turnos',
+  aplicar(bd) {
+    bd.ejecutar(`
+      CREATE TABLE celdas (
+        empleado_id INTEGER NOT NULL REFERENCES empleados(id) ON DELETE CASCADE,
+        dia         TEXT NOT NULL,
+        tipo        TEXT NOT NULL CHECK (tipo IN ('turnos', 'ausencia', 'vacaciones')),
+        PRIMARY KEY (empleado_id, dia)
+      )
+    `);
+    bd.ejecutar(`
+      CREATE TABLE turnos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        empleado_id INTEGER NOT NULL REFERENCES empleados(id) ON DELETE CASCADE,
+        dia         TEXT NOT NULL,
+        inicio      TEXT NOT NULL,
+        fin         TEXT NOT NULL,
+        FOREIGN KEY (empleado_id, dia) REFERENCES celdas (empleado_id, dia) ON DELETE CASCADE
+      )
+    `);
+    bd.ejecutar('CREATE INDEX celdas_dia ON celdas (dia)');
+    bd.ejecutar('CREATE INDEX turnos_empleado_dia ON turnos (empleado_id, dia)');
+  },
+};
+
 /** En orden. Nunca se reordena, nunca se quita ninguna: solo se añade al final. */
 export const MIGRACIONES: readonly Migracion[] = [
   CREAR_PLANTILLA,
   CREAR_AJUSTES,
   AMPLIAR_FICHA_Y_RETIRAR_AJUSTES,
+  CREAR_CUADRANTE,
 ];
 
 /** La versión de esquema que esta versión de la app sabe leer. */

@@ -52,6 +52,32 @@ describe('Los datos guardados no salen del dispositivo', () => {
     }
   });
 
+  it('Planificar no envía nada a ninguna parte', () => {
+    // Lo planificado —turnos, ausencias y vacaciones— se guarda con el mismo código
+    // que la plantilla y en el mismo fichero, así que la comprobación es la misma:
+    // si el módulo que lo escribe no sabe hablar por la red ni escribir fuera de la
+    // app, planificar no puede sacar nada del dispositivo.
+    const ficheros = ficherosDeLaCapaDeDatos();
+    const delCuadrante = ficheros.filter((fichero) => fichero.includes('almacenCuadrante'));
+    // Si el adaptador cambiara de nombre o de sitio, este test dejaría de mirarlo
+    // sin decir nada. Por eso se exige que esté entre los ficheros recorridos.
+    expect(delCuadrante.length).toBeGreaterThan(0);
+
+    for (const fichero of ficheros) {
+      const codigo = readFileSync(fichero, 'utf8');
+      for (const forma of FORMAS_DE_SALIR) {
+        expect({ fichero, codigo: codigo.match(forma)?.[0] ?? null }).toEqual({
+          fichero,
+          codigo: null,
+        });
+      }
+    }
+
+    // Lo único que sale del dispositivo es la exportación que el encargado lanza a
+    // mano, y vive fuera de la capa de datos: `expo-print` y `expo-sharing` no se
+    // nombran en ninguno de estos ficheros, que es justo lo que se acaba de exigir.
+  });
+
   it('la capa de datos solo conoce el fichero de base de datos de la app', () => {
     // Un solo nombre de fichero, sin rutas: `expo-sqlite` lo resuelve dentro del
     // almacenamiento privado de la app, al que otras aplicaciones no llegan.

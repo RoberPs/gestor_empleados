@@ -23,7 +23,7 @@ deshacer.
 | --- | --- | --- |
 | Identificador de paquete | `com.los24cafe.cuadrante` | **No.** Cambiarlo publica una app distinta |
 | Nombre bajo el icono | `Cuadrante` | Sí |
-| `versionCode` | `2` | Sí, sube en cada build que se distribuya |
+| `versionCode` | `3` | Sí, sube en cada build que se distribuya |
 | Copia de seguridad de Android | `allowBackup: false` | Sí, una línea |
 | Perfil de build | `produccion`, APK universal | Sí |
 | Slug del proyecto | `gestor_empleados` (sin cambios) | Sí, mientras no exista el proyecto en EAS |
@@ -110,13 +110,19 @@ borran al cabo de unas semanas en el plan gratuito. El día que haya que reinsta
 nuevo, móvil roto, app desinstalada por error— querrás el fichero a mano, no reconstruir el
 proyecto con el toolchain de dentro de tres años.
 
-Guarda junto al APK una nota con la versión (`1.0.0`), el `versionCode` (`2`) y la fecha.
+Guarda junto al APK una nota con la versión (`1.0.0`), el `versionCode` (`3`) y la fecha.
 
-El `versionCode` empieza en `2` y no en `1` porque el `1` se gastó en un primer build que se
-descartó: `expo doctor` avisó de que `expo` y `expo-router` iban una patch por detrás de lo que
-espera el SDK 57, y se prefirió corregirlo antes de entregar nada. En una app que no se va a
-actualizar, una corrección de fallos que no se coge hoy no se coge nunca. Un `versionCode` no
-se reutiliza jamás, ni siquiera si su build se tira.
+**Historia de los `versionCode`.** Un `versionCode` no se reutiliza jamás, ni siquiera si su
+build se tira, así que conviene saber en qué se gastó cada uno:
+
+- El `1` se gastó en un primer build que se descartó: `expo doctor` avisó de que `expo` y
+  `expo-router` iban una patch por detrás de lo que espera el SDK 57, y se prefirió corregirlo
+  antes de entregar nada. En una app que no se va a actualizar, una corrección de fallos que no
+  se coge hoy no se coge nunca.
+- El `2` es el build del 09/09/2026, el primero que se llegó a instalar. Se probó en el móvil
+  del desarrollador y **no se entregó al encargado**: fue el que destapó que el cuadrante no se
+  guardaba (ver "Lo que este despliegue no resuelve").
+- El `3` es el primero que lleva el cuadrante guardado, y por tanto el primero entregable.
 
 ### 6. Instalar en los dos móviles
 
@@ -136,6 +142,10 @@ instalable». Ahora se pueden comprobar, y **se hacen en la copia del desarrolla
 empleados de prueba, sin tocar los datos reales del encargado:
 
 - *Abrir la app un día cualquiera de la semana* — cerrarla del todo y abrirla desde su icono.
+- *El cuadrante guardado funciona de verdad en el dispositivo* — planificar una semana, cerrar
+  la app desde el selector de aplicaciones y comprobar que al reabrir sigue todo ahí. Es el
+  escenario que justifica este build: hasta ahora el cuadrante se perdía.
+- *El almacenamiento funciona de verdad en el dispositivo* — la plantilla y las fichas.
 - *La semana completa se ve sin scroll horizontal* — en vertical, sobre 360 puntos de ancho.
 - *Cabeceras de día con su fecha*, y el resto de escenarios de legibilidad.
 
@@ -143,13 +153,23 @@ Anotar en ese documento la fecha, el dispositivo y el resultado de cada uno.
 
 ## Lo que este despliegue no resuelve
 
-Dos huecos conocidos. Ninguno es un fallo del despliegue: son decisiones del producto que
-conviene tener por escrito.
+Dos huecos conocidos. Ninguno es un fallo del despliegue: son cosas del producto que conviene
+tener por escrito.
 
-**No hay copia de seguridad de los datos.** Todo el cuadrante y toda la plantilla viven en un
-único móvil, y con `allowBackup: false` no salen de ahí. Lo único que sale es el PDF de una
-semana, que sirve para leerlo pero no para restaurar nada. Un móvil perdido se lleva la
-plantilla entera. Cerrarlo requiere un change de exportación/importación de la base de datos.
+> **Resuelto el 09/09/2026: el cuadrante ya se guarda.** Al probar el primer build en el
+> dispositivo se vio que solo persistía la plantilla: los turnos, las ausencias y las
+> vacaciones vivían en memoria y se perdían al cerrar la app. Mientras eso siguió así **no se
+> entregó el APK al encargado**, porque planificar la semana es su trabajo principal y era
+> justo lo que no sobrevivía.
+>
+> El change `add-roster-storage` lo cerró: las celdas del cuadrante bajaron a SQLite en la
+> migración 4, con las tablas `celdas` y `turnos`. Ese bloqueo queda retirado y el APK ya se
+> puede entregar.
+
+**No hay copia de seguridad de los datos.** La plantilla vive en un único móvil, y con
+`allowBackup: false` no sale de ahí. Lo único que sale es el PDF de una semana, que sirve para
+leerlo pero no para restaurar nada. Un móvil perdido se lleva la plantilla entera. Cerrarlo
+requiere un change de exportación/importación de la base de datos.
 
 **La app no tiene bloqueo propio.** No pide PIN ni huella: quien tenga el móvil desbloqueado
 en la mano ve todos los nombres, teléfonos, emails y notas, incluidos los motivos de ausencia.
