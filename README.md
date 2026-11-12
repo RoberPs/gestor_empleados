@@ -7,6 +7,44 @@ local de hostelería con una plantilla de entre 10 y 20 personas.
 > El nombre «La Esquina café», el logo y todos los datos de empleados de este repositorio
 > son ficticios.
 
+## Pruébala ahora
+
+**👉 [roberps.github.io/gestor_empleados](https://roberps.github.io/gestor_empleados/)**
+
+Ábrela **desde el móvil**: no hay que instalar nada, registrarse ni aceptar ningún
+permiso. Arranca con una plantilla de ejemplo de 14 personas y la semana en curso ya
+planificada, con turnos, una ausencia y unas vacaciones.
+
+Qué probar:
+
+1. **Planificar un turno**: toca una celda vacía, elige «Crear turno planificado» y
+   escribe las horas como te salga: `9`, `930`, `9:30` o `9.30` valen igual.
+2. **Dos turnos el mismo día** («Añadir un segundo turno ese mismo día»), o **uno que
+   cruza la medianoche** (de `20` a `2`).
+3. **Marcar una ausencia o unas vacaciones** desde la misma hoja de acciones de la
+   celda.
+4. **Copiar una celda** («Copiar esta celda») **y pegarla** en otro día («Pegar aquí lo
+   copiado»).
+5. **Cambiar de semana** con «Semana anterior» y «Semana siguiente».
+6. **Ver y editar la plantilla** en «Empleados»: dar de alta, editar una ficha y dar de
+   baja.
+7. **Exportar la semana a PDF** con el icono de compartir. En el navegador se abre el
+   diálogo de impresión, desde donde se guarda como PDF.
+
+Lo que toques se guarda **solo en tu navegador** y sigue ahí al recargar. «Reiniciar»,
+en la banda superior, devuelve la demo al estado de ejemplo.
+
+Si la abres desde el ordenador, se ve como en el móvil activando la vista de
+dispositivo móvil en las herramientas de desarrollo del navegador (F12).
+
+### En qué se diferencia de la app instalada
+
+- Lleva una banda que la identifica como demostración y datos de ejemplo.
+- Exportar abre el diálogo de impresión del navegador, en lugar de la hoja de compartir
+  del móvil.
+- Los datos viven en el almacenamiento del navegador (IndexedDB) y no en el del
+  teléfono. Nada sale de tu navegador: no hay servidor, ni analítica, ni cuentas.
+
 ## Qué hace
 
 - **Cuadrante semanal**: una rejilla de empleados por días, de lunes a domingo. Al tocar
@@ -62,7 +100,10 @@ implementa y después se archiva publicando sus specs.
 
 La suite tiene **507 tests en 51 ficheros**.
 
-## Puesta en marcha
+## Puesta en marcha en local
+
+Para probarla no hace falta nada de esto: basta con la [demo pública](#pruébala-ahora).
+Esta sección es para quien quiera ejecutar el código.
 
 Requisitos: Node.js 20 o superior y npm.
 
@@ -81,6 +122,15 @@ npx expo start       # en el móvil, con Expo Go
 
 `npm run web` abre la app en http://localhost:8081. Se ve mejor con las herramientas
 de desarrollo del navegador en vista de móvil.
+
+Para usar el código en un móvil:
+
+- **Con Expo Go** (Android o iOS): instala Expo Go, lanza `npx expo start` y escanea
+  el QR. El móvil y el ordenador tienen que estar en la misma red; si no, usa
+  `npx expo start --tunnel`. La app arranca vacía, sin datos de ejemplo.
+- **Como APK de Android**: con una cuenta de expo.dev, quita `owner` y
+  `extra.eas.projectId` de `app.json` (apuntan a la cuenta del autor) y sigue
+  [`docs/despliegue.md`](docs/despliegue.md).
 
 > Si Jest se queda sin memoria en Windows, lánzalo en serie:
 > `npx jest --runInBand`.
@@ -102,7 +152,9 @@ docs/               despliegue y verificación manual
 
 - **App**: APK de Android generado con EAS Build e instalado a mano. No hay
   publicación en tiendas.
-- **Demo**: `npm run demo:build` genera un sitio estático en `dist/`, que se puede
-  servir desde cualquier alojamiento estático.
+- **Demo**: se publica sola en GitHub Pages en cada push a `main` mediante
+  [`.github/workflows/demo.yml`](.github/workflows/demo.yml). El workflow pasa el
+  typecheck y la suite de tests antes de construir, así que una versión rota no llega a
+  publicarse. Para generarla a mano: `npm run demo:build`, que deja el sitio en `dist/`.
 
 El proceso completo está en [`docs/despliegue.md`](docs/despliegue.md).

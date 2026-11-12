@@ -233,22 +233,44 @@ Ese `dist/` se sube a un alojamiento estático. En Netlify basta con arrastrar l
 o usar su CLI; en Vercel o Cloudflare Pages el paso equivalente. Lo único que hace falta
 del alojamiento es servir ficheros, dar un enlace y poder borrarlo.
 
-**Dónde está publicada hoy**: en **Netlify**, desde el 09/09/2026. Comprobada en un móvil
-Android con dos navegadores distintos, sobre el sitio ya publicado. Es el alojamiento para
-el que sirve el `_headers` de este repositorio: si algún día se mueve a Vercel, esa
-cabecera deja de aplicarse y el `noindex` habría que declararlo de otra forma.
+**Dónde está publicada hoy**: en **GitHub Pages**, en
+https://roberps.github.io/gestor_empleados/, como demo pública enlazada desde el
+`README.md` del repositorio. Se publica sola en cada push a `main` con
+`.github/workflows/demo.yml`, que antes pasa el typecheck y la suite.
 
-**Publicarla sin indexar**: la demo se reparte a mano y no tiene por qué aparecer en un
-buscador. El sitio incluye `robots.txt` excluyéndolo entero, y conviene añadir en el
-alojamiento la cabecera `X-Robots-Tag: noindex` (en Netlify, un fichero `_headers`).
+Dos detalles de Pages que el workflow ya resuelve:
+
+- **El sitio no vive en la raíz del dominio**, sino bajo `/gestor_empleados/`. El
+  workflow construye con `DEMO_BASE_URL=/gestor_empleados`; `app.config.js` la pasa a
+  Expo como `experiments.baseUrl`, y la demo descarga el motor de SQLite desde esa ruta.
+  Sin la variable, la configuración es la de `app.json`, así que ni el APK ni
+  `npm run web` cambian.
+- **Recargar en una ruta interna** (por ejemplo `/gestor_empleados/empleados`) daría
+  404, porque Pages no conoce las rutas de la app. El workflow copia `index.html` a
+  `404.html` y la app arranca y se enruta sola.
+
+Para construirla a mano igual que en Pages desde Git Bash en Windows, hay que añadir
+`MSYS_NO_PATHCONV=1`; si no, Git Bash convierte `/gestor_empleados` en una ruta de
+Windows.
+
+**Sobre la indexación**: GitHub Pages no admite cabeceras propias, así que `_headers` no
+se aplica allí, y el `robots.txt` solo cuenta en la raíz del dominio. En la práctica, la
+demo puede aparecer en buscadores. Es aceptable: es pública a propósito y lleva datos
+inventados.
+
+**Antes, en Netlify**: del 09/09/2026 hasta el paso a GitHub Pages, la demo se repartió
+a mano a clientes potenciales desde Netlify, con el nombre y el logo reales del local.
+Ese sitio **hay que retirarlo** (ver «Retirar la demo»), porque enseña la identidad del
+local que el repositorio público ya no lleva.
 
 Antes de dar el enlace a nadie, abrirlo en un móvil de verdad y con datos móviles: la
 primera apertura descarga el motor de SQLite, y es la única vez que se nota.
 
 ### Retirar la demo
 
-**Borrar el sitio en el alojamiento.** El enlace deja de resolver y no queda nada que
-deshacer. Lo que se hubiera quedado en el navegador de quien la probó son datos
+**Borrar el sitio en el alojamiento.** En GitHub Pages se hace en *Settings → Pages* del
+repositorio, desactivando Pages, o borrando el workflow. En Netlify, borrando el sitio.
+El enlace deja de resolver y no queda nada que deshacer. Lo que se hubiera quedado en el navegador de quien la probó son datos
 inventados.
 
 Retirarla no afecta a ninguna app instalada. Conviene hacerlo cuando la conversación con

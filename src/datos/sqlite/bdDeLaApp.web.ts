@@ -28,9 +28,12 @@ let nombreRecuperado: string | undefined;
  * Descarga el motor de SQLite y recupera lo guardado. Hay que esperarlo antes de abrir.
  *
  * El `.wasm` se sirve desde la raíz del sitio, donde lo deja `scripts/copiarSqlWasm.js`.
+ * Cuando el sitio no cuelga de la raíz del dominio —en GitHub Pages vive bajo
+ * `/gestor_empleados/`—, Expo deja esa ruta base en `EXPO_BASE_URL` y se antepone.
  */
 export async function prepararElAlmacenamiento(nombreDelFichero: string): Promise<void> {
-  await prepararSqlJs((fichero) => `/${fichero}`);
+  const rutaBase = (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
+  await prepararSqlJs((fichero) => `${rutaBase}/${fichero}`);
   contenidoRecuperado = await leerElFicheroGuardado(nombreDelFichero);
   nombreRecuperado = nombreDelFichero;
 }
