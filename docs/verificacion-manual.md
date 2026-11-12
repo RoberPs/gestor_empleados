@@ -968,6 +968,8 @@ diálogo de impresión y la forma de quedarse un fichero cambian de uno a otro.
 - **Qué se debe observar**: el enlace no da acceso a la demo. La app instalada en el móvil
   sigue funcionando igual, con sus datos intactos.
 - **Por qué está aquí**: solo se comprueba retirando de verdad un sitio publicado.
-- **Última comprobación**: pendiente. La demo está **publicada en Netlify** desde el
-  09/09/2026 y se está enseñando, así que este escenario no se puede comprobar todavía:
-  se cierra el día que se retire, que es cuando toca comprobarlo.
+- **Última comprobación**: 12/11/2026, parcial. Se pausó el sitio de Netlify, donde
+  estuvo publicada desde el 09/09/2026, y su enlace ya no abre la demo: **cumple** esa
+  parte. Queda por comprobar que la app instalada sigue igual, con sus datos intactos.
+  La demo vigente está ahora en GitHub Pages (ver `despliegue.md`): este escenario
+  vuelve a aplicarse el día que se retire de allí.

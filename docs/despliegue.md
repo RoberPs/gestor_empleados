@@ -260,8 +260,9 @@ inventados.
 
 **Antes, en Netlify**: del 09/09/2026 hasta el paso a GitHub Pages, la demo se repartió
 a mano a clientes potenciales desde Netlify, con el nombre y el logo reales del local.
-Ese sitio **hay que retirarlo** (ver «Retirar la demo»), porque enseña la identidad del
-local que el repositorio público ya no lleva.
+El 12/11/2026 ese sitio **se pausó** y su enlace dejó de abrirse. Pausado no es lo mismo
+que borrado: los ficheros siguen en la cuenta de Netlify, con la identidad real del
+local, y reactivarlo los volvería a servir. Si no se va a usar más, conviene borrarlo.
 
 Antes de dar el enlace a nadie, abrirlo en un móvil de verdad y con datos móviles: la
 primera apertura descarga el motor de SQLite, y es la única vez que se nota.
